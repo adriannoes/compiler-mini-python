@@ -6,14 +6,39 @@ from enum import Enum, auto
 
 class TokenKind(Enum):
     INT = auto()
+    BOOL = auto()
+    VOID = auto()
+    IF = auto()
+    ELSE = auto()
+    WHILE = auto()
     RETURN = auto()
+    TRUE = auto()
+    FALSE = auto()
     IDENTIFIER = auto()
     INTEGER = auto()
     LEFT_PAREN = auto()
     RIGHT_PAREN = auto()
     LEFT_BRACE = auto()
     RIGHT_BRACE = auto()
+    LEFT_BRACKET = auto()
+    RIGHT_BRACKET = auto()
     SEMICOLON = auto()
+    COMMA = auto()
+    ASSIGN = auto()
+    PLUS = auto()
+    MINUS = auto()
+    STAR = auto()
+    SLASH = auto()
+    PERCENT = auto()
+    EQUAL_EQUAL = auto()
+    BANG_EQUAL = auto()
+    LESS = auto()
+    LESS_EQUAL = auto()
+    GREATER = auto()
+    GREATER_EQUAL = auto()
+    BANG = auto()
+    AND_AND = auto()
+    OR_OR = auto()
     EOF = auto()
 
 
@@ -32,13 +57,41 @@ class LexError(Exception):
         self.column = column
 
 
-_KEYWORDS = {"int": TokenKind.INT, "return": TokenKind.RETURN}
-_PUNCTUATION = {
-    ord("("): TokenKind.LEFT_PAREN,
-    ord(")"): TokenKind.RIGHT_PAREN,
-    ord("{"): TokenKind.LEFT_BRACE,
-    ord("}"): TokenKind.RIGHT_BRACE,
-    ord(";"): TokenKind.SEMICOLON,
+_KEYWORDS = {
+    "int": TokenKind.INT,
+    "bool": TokenKind.BOOL,
+    "void": TokenKind.VOID,
+    "if": TokenKind.IF,
+    "else": TokenKind.ELSE,
+    "while": TokenKind.WHILE,
+    "return": TokenKind.RETURN,
+    "true": TokenKind.TRUE,
+    "false": TokenKind.FALSE,
+}
+_SYMBOLS = {
+    b"(": TokenKind.LEFT_PAREN,
+    b")": TokenKind.RIGHT_PAREN,
+    b"{": TokenKind.LEFT_BRACE,
+    b"}": TokenKind.RIGHT_BRACE,
+    b"[": TokenKind.LEFT_BRACKET,
+    b"]": TokenKind.RIGHT_BRACKET,
+    b";": TokenKind.SEMICOLON,
+    b",": TokenKind.COMMA,
+    b"=": TokenKind.ASSIGN,
+    b"+": TokenKind.PLUS,
+    b"-": TokenKind.MINUS,
+    b"*": TokenKind.STAR,
+    b"/": TokenKind.SLASH,
+    b"%": TokenKind.PERCENT,
+    b"==": TokenKind.EQUAL_EQUAL,
+    b"!=": TokenKind.BANG_EQUAL,
+    b"<": TokenKind.LESS,
+    b"<=": TokenKind.LESS_EQUAL,
+    b">": TokenKind.GREATER,
+    b">=": TokenKind.GREATER_EQUAL,
+    b"!": TokenKind.BANG,
+    b"&&": TokenKind.AND_AND,
+    b"||": TokenKind.OR_OR,
 }
 
 
@@ -122,10 +175,15 @@ class _Scanner:
             text = self.source[start:self.offset].decode("ascii")
             return Token(TokenKind.INTEGER, text, line, column)
 
-        if byte in _PUNCTUATION:
+        spelling = self.source[start:start + 2]
+        if spelling not in _SYMBOLS:
+            spelling = self.source[start:start + 1]
+        kind = _SYMBOLS.get(spelling)
+        if kind is None:
+            raise LexError(line, column, _unexpected_byte(byte))
+        for _ in spelling:
             self.advance()
-            return Token(_PUNCTUATION[byte], chr(byte), line, column)
-        raise LexError(line, column, _unexpected_byte(byte))
+        return Token(kind, spelling.decode("ascii"), line, column)
 
 
 def lex(source: bytes) -> list[Token]:
