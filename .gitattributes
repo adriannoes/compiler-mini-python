@@ -1,2 +1,3 @@
 *.mc text eol=lf
 *.tokens text eol=lf
+*.ast text eol=lf
