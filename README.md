@@ -75,11 +75,53 @@ Rust looks up precedence in a function. Python reads it from a table.
 
 A block accepts declarations and statements. A type keyword starts a declaration.
 After `if (condition)`, the parser expects one statement. Braces allow declarations inside that statement.
-The parser accepts unknown names and mixed types. Name resolution and type analysis belong to a later phase.
+The parser accepts unknown names and mixed types. The next two commands analyze names and types.
 Array syntax also belongs to a later phase. Deeply nested syntax can reach the Python recursion limit.
 
 The command scans the whole file before it parses any tokens. A lexical error therefore takes priority over an earlier syntax error.
 On a syntax error, the command writes the first diagnostic to standard error, leaves standard output empty, and exits with status 1.
+
+## Resolve names and check types
+
+A scope is the part of a program where a declaration is visible.
+From the repository root, print the declarations and name uses in the example.
+
+```sh
+python3 -m minic --resolve examples/scopes.mc
+```
+
+Compare these two reads in the output.
+
+```text
+  Read "value" scope=#2 @7:13 -> Symbol #4 @6:9
+  Read "value" scope=#1 @9:10 -> Symbol #2 @3:7
+```
+
+Inside the block, `value` selects the declaration on line 6. After the block, the same name selects the declaration on line 3.
+The [resolver](minic/resolver.py) registers all functions before it visits their bodies. This lets `main` call `later` before its definition.
+A local variable becomes visible before its initializer. In `int x = x;`, the read refers to the new variable.
+Static analysis accepts the read. Execution determines whether the variable has a value.
+
+The type checker uses each binding to find the declared type. C++ indexes bindings by node address. Rust assigns a node identifier.
+Python uses the AST object as a dictionary key. Nodes from separate trees can share a source position and still refer to different declarations.
+
+From the repository root, try a valid program and an invalid initializer.
+
+```sh
+python3 -m minic --check examples/types.mc
+python3 -m minic --check examples/type_error.mc
+```
+
+The first command exits with status 0 and prints nothing. The second exits with status 1 and writes this diagnostic to standard error.
+
+```text
+examples/type_error.mc:3:16: error: Expected type bool. Received int.
+```
+
+Mini-C keeps `int` and `bool` distinct. The [type checker](minic/type_checker.py) represents each Mini-C type with a separate enum member.
+The checker resolves every name and checks all function signatures before it checks any body.
+It checks unreachable statements, including statements after a return.
+A non-void function must guarantee a return. An `if` guarantees a return when both branches do. A loop alone gives no such guarantee.
 
 ## Tests
 
@@ -90,4 +132,4 @@ python3 -m unittest discover -s tests
 ```
 
 The command tests compare the exit status and the bytes on both output streams.
-The [expected token listings and syntax trees](tests/fixtures) come from the C++ compiler.
+The [expected token listings, syntax trees, and name bindings](tests/fixtures) come from the C++ compiler.
