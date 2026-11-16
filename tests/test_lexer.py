@@ -30,6 +30,45 @@ class LexerTests(unittest.TestCase):
             ],
         )
 
+    def test_keywords_require_an_exact_case_sensitive_name(self):
+        for word in ("int", "bool", "void", "if", "else", "while", "return", "true", "false"):
+            for name in (word + "2", "_" + word, word.upper()):
+                with self.subTest(name=name):
+                    self.assertEqual(lex(name.encode("ascii"))[0], Token(TokenKind.IDENTIFIER, name, 1, 1))
+
+    def test_operators_take_the_longest_supported_spelling(self):
+        cases = [
+            (b"===", ["==", "="]),
+            (b"!==", ["!=", "="]),
+            (b"<==>==", ["<=", "=", ">=", "="]),
+            (b"&&!!||", ["&&", "!", "!", "||"]),
+            (b"-42,++--+=/=", ["-", "42", ",", "+", "+", "-", "-", "+", "=", "/", "="]),
+        ]
+        for source, spellings in cases:
+            with self.subTest(source=source):
+                self.assertEqual([token.text for token in lex(source)[:-1]], spellings)
+
+    def test_comments_separate_operators_from_each_other(self):
+        self.assertEqual(
+            lex(b"=/**/= 8/2// /\r\n/"),
+            [
+                Token(TokenKind.ASSIGN, "=", 1, 1),
+                Token(TokenKind.ASSIGN, "=", 1, 6),
+                Token(TokenKind.INTEGER, "8", 1, 8),
+                Token(TokenKind.SLASH, "/", 1, 9),
+                Token(TokenKind.INTEGER, "2", 1, 10),
+                Token(TokenKind.SLASH, "/", 2, 1),
+                Token(TokenKind.EOF, "", 2, 2),
+            ],
+        )
+
+    def test_unpaired_logical_operator_points_to_the_unpaired_byte(self):
+        for source, column in [(b"&&&", 3), (b"|||", 3), (b"&/**/&", 1), (b"| |", 1)]:
+            with self.subTest(source=source):
+                with self.assertRaises(LexError) as caught:
+                    lex(source)
+                self.assertEqual((caught.exception.line, caught.exception.column), (1, column))
+
     def test_eof_follows_the_last_byte(self):
         for source, column in [(b"", 1), (b"//", 3), (b"/* /* */", 9)]:
             with self.subTest(source=source):

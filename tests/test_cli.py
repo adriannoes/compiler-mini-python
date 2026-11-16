@@ -15,14 +15,21 @@ def run_cli(*args):
 
 
 class CommandTests(unittest.TestCase):
-    def test_hello_matches_the_reference_listing(self):
-        expected = (ROOT / "tests/fixtures/hello.tokens").read_bytes()
-        self.assertEqual(run_cli("--tokens", "examples/hello.mc"), (0, expected, b""))
+    def test_examples_match_the_reference_listings(self):
+        for name in ("hello", "lexer", "arrays"):
+            with self.subTest(name=name):
+                expected = (ROOT / f"tests/fixtures/{name}.tokens").read_bytes()
+                self.assertEqual(run_cli("--tokens", f"examples/{name}.mc"), (0, expected, b""))
 
     def test_lexical_error_prints_no_partial_tokens(self):
-        path = "tests/fixtures/invalid.mc"
-        error = b'tests/fixtures/invalid.mc:2:3: error: Unexpected character "@".\n'
-        self.assertEqual(run_cli("--tokens", path), (1, b"", error))
+        cases = [
+            ("tests/fixtures/invalid.mc", '2:3: error: Unexpected character "@".'),
+            ("tests/fixtures/unpaired_and.mc", '2:17: error: Unexpected character "&".'),
+        ]
+        for path, diagnostic in cases:
+            with self.subTest(path=path):
+                error = f"{path}:{diagnostic}\n".encode("ascii")
+                self.assertEqual(run_cli("--tokens", path), (1, b"", error))
 
     def test_missing_file(self):
         self.assertEqual(
