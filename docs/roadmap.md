@@ -108,10 +108,13 @@ The C++ and Rust references treat that input as empty source. The file compariso
 These phases extend the study with executable exercises and static bytecode analysis.
 Each phase uses a separate branch and local integration after its tests pass.
 
-| Phase | Delivery | Acceptance | Status |
-|---|---|---|---|
-| 11 | [Parsing theory](theory-parsing.md) and a [grammar laboratory](../labs/parsing/grammar.py) | Compute nullable, FIRST, FOLLOW, and predictive conflicts. Relate the results to the production parser. | Complete |
-| 12 | [Control-flow graphs](control-flow.md) and bytecode inspection | Identify blocks, successors, and unreachable instructions before and after optimization. | Complete |
-| 13 | [Static bytecode verification](stack-analysis.md) | Reject invalid metadata, operands, stack joins, returns, and cycles without source steps before VM execution. | Complete |
-| 14 | A separate LLVM laboratory | Compare bounded Mini-C, C, and Rust results and inspect generated LLVM IR. Record the tool versions. | Planned |
-| 15 | Generated cases and final validation | Test all Python engines, compare both references, run the laboratories, and run the complete suite. | Planned |
+| Phase | Delivery | Acceptance | Reference phases | Status |
+|---|---|---|---|---|
+| 11 | [Parsing theory](theory-parsing.md) and a [grammar laboratory](../labs/parsing/grammar.py) | Compute nullable, FIRST, FOLLOW, and predictive conflicts. Relate the results to the production parser. | C++ 3 and Rust 3 | Complete |
+| 12 | [Control-flow graphs](control-flow.md) and bytecode inspection | Identify blocks, successors, and unreachable instructions before and after optimization. | Rust 10 | Complete |
+| 13 | [Static bytecode verification](stack-analysis.md) | Reject invalid metadata, operands, stack joins, returns, and cycles without source steps before VM execution. | C++ 8 tests and Rust 11 and 12 | Complete |
+| 14 | A separate [LLVM laboratory](theory-llvm.md) | Compare bounded Mini-C, C, and Rust results and inspect generated LLVM IR. Record the tool versions. | C++ 12 and Rust 9 | Complete |
+| 15 | [Generated cases and final validation](validation.md) | Test all Python engines, compare both references, run the laboratories, and run the complete suite. | C++ 13 and Rust 8 | Complete |
+
+The linked studies identify their predecessor files and reproduction commands.
+Python's verifier runs before VM execution and optimization. Rust's corresponding analysis runs only in its test builds.
