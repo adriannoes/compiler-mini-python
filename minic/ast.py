@@ -1,7 +1,7 @@
-"""Represent scalar Mini-C syntax with positioned nodes."""
+"""Represent Mini-C syntax with positioned nodes."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 from .lexer import Token
 
@@ -24,6 +24,11 @@ class Name(Expr):
 
 
 @dataclass(frozen=True, eq=False)
+class Index(Expr):
+    index: Expr
+
+
+@dataclass(frozen=True, eq=False)
 class Call(Expr):
     arguments: tuple[Expr, ...]
 
@@ -41,7 +46,7 @@ class Binary(Expr):
 
 @dataclass(frozen=True, eq=False)
 class Assign(Expr):
-    target: Name
+    target: Union[Name, Index]
     value: Expr
 
 
@@ -58,6 +63,7 @@ class Block(Stmt):
 class Variable(Stmt):
     type_token: Token
     initializer: Optional[Expr]
+    length: Optional[Token] = None
 
 
 @dataclass(frozen=True, eq=False)

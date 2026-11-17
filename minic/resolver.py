@@ -86,12 +86,17 @@ class _Resolver:
             expr = pending.pop()
             if isinstance(expr, ast.Name):
                 self.bind(scope, expr, "Read")
+            elif isinstance(expr, ast.Index):
+                self.bind(scope, expr, "Read")
+                pending.append(expr.index)
             elif isinstance(expr, ast.Call):
                 self.bind(scope, expr, "Call")
                 pending.extend(reversed(expr.arguments))
             elif isinstance(expr, ast.Assign):
                 self.bind(scope, expr.target, "Write")
                 pending.append(expr.value)
+                if isinstance(expr.target, ast.Index):
+                    pending.append(expr.target.index)
             elif isinstance(expr, ast.Unary):
                 pending.append(expr.operand)
             elif isinstance(expr, ast.Binary):

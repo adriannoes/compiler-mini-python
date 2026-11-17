@@ -1,8 +1,8 @@
-"""Check scalar Mini-C types and return paths before execution."""
+"""Check Mini-C types, array lengths, and return paths before execution."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 from . import ast
 from .lexer import Token, TokenKind as Kind
@@ -16,6 +16,7 @@ class Type(Enum):
 
 
 _TYPE_KEYWORDS = {Kind.INT: Type.INT, Kind.BOOL: Type.BOOL, Kind.VOID: Type.VOID}
+MAX_ARRAY_LENGTH = 1024
 
 
 def _declared_type(token: Token) -> Type:
@@ -65,6 +66,7 @@ class Signature:
 class TypeAnalysis:
     resolution: Resolution
     types: dict[ast.Expr, Type]
+    lengths: dict[ast.Variable, int] = field(default_factory=dict)
 
 
 class _Checker:
@@ -72,11 +74,23 @@ class _Checker:
         self.resolution = resolution
         self.signatures = signatures
         self.types: dict[ast.Expr, Type] = {}
+        self.lengths: dict[ast.Variable, int] = {}
 
     def signature(self, call: ast.Call) -> Signature:
         declaration = self.resolution.bindings[call].symbol.declaration
         assert isinstance(declaration, ast.Function)
         return self.signatures[declaration]
+
+    def variable_type(self, expr: Union[ast.Name, ast.Index]) -> Type:
+        declaration = self.resolution.bindings[expr].symbol.declaration
+        assert isinstance(declaration, (ast.Variable, ast.Parameter))
+        indexed = isinstance(expr, ast.Index)
+        array = declaration in self.lengths
+        if array and not indexed:
+            raise AnalysisError(expr.token, f'Array "{expr.token.text}" requires an index.')
+        if indexed and not array:
+            raise AnalysisError(expr.token, f'Name "{expr.token.text}" does not refer to an array.')
+        return _value_type(declaration.type_token)
 
     def expression(self, root: ast.Expr) -> Type:
         # Finish each child before its parent. A call checks each argument before the next one.
@@ -94,6 +108,9 @@ class _Checker:
                 pending.extend(((expr.right, False, None), (expr.left, False, None)))
             elif isinstance(expr, ast.Unary):
                 pending.append((expr.operand, False, None))
+            elif isinstance(expr, ast.Index):
+                self.variable_type(expr)
+                pending.append((expr.index, False, Type.INT))
             elif isinstance(expr, ast.Assign):
                 pending.extend(((expr.value, False, None), (expr.target, False, None)))
             elif isinstance(expr, ast.Call):
@@ -110,10 +127,8 @@ class _Checker:
     def result_type(self, expr: ast.Expr) -> Type:
         if isinstance(expr, ast.Literal):
             return Type.INT if expr.token.kind is Kind.INTEGER else Type.BOOL
-        if isinstance(expr, ast.Name):
-            declaration = self.resolution.bindings[expr].symbol.declaration
-            assert isinstance(declaration, (ast.Variable, ast.Parameter))
-            return _value_type(declaration.type_token)
+        if isinstance(expr, (ast.Name, ast.Index)):
+            return self.variable_type(expr)
         if isinstance(expr, ast.Call):
             return self.signature(expr).result
         if isinstance(expr, ast.Assign):
@@ -151,6 +166,13 @@ class _Checker:
             self.statement(stmt.body, result)
         elif isinstance(stmt, ast.Variable):
             ty = _value_type(stmt.type_token)
+            if stmt.length is not None:
+                digits = stmt.length.text.lstrip("0") or "0"
+                if len(digits) > 4 or not 1 <= int(digits) <= MAX_ARRAY_LENGTH:
+                    raise AnalysisError(stmt.length, "Array length must be from 1 through 1024.")
+                if stmt.initializer is not None:
+                    raise AnalysisError(stmt.initializer.token, "Array initializers are not supported.")
+                self.lengths[stmt] = int(digits)
             if stmt.initializer is not None:
                 _require(self.expression(stmt.initializer), ty, stmt.initializer.token)
         elif isinstance(stmt, ast.ExpressionStmt):
@@ -178,4 +200,4 @@ def check_types(program: ast.Program) -> TypeAnalysis:
         returns = checker.statement(function.body, signature.result)
         if signature.result is not Type.VOID and not returns:
             raise AnalysisError(function.token, f'Function "{function.token.text}" does not guarantee a return value.')
-    return TypeAnalysis(resolution, checker.types)
+    return TypeAnalysis(resolution, checker.types, checker.lengths)

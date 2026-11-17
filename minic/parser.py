@@ -94,9 +94,15 @@ class _Parser:
     def declaration(self) -> ast.Variable:
         ty = self.type_token()
         name = self.expect(Kind.IDENTIFIER, "Expected a variable name.")
+        length = None
+        if self.take(Kind.LEFT_BRACKET):
+            length = self.expect(Kind.INTEGER, "Expected an integer array length.")
+            self.expect(Kind.RIGHT_BRACKET, 'Expected "]" after array length.')
+            if self.current.kind is Kind.ASSIGN:
+                raise ParseError(self.current, "Array initializers are not supported.")
         value = self.expression() if self.take(Kind.ASSIGN) else None
         self.expect(Kind.SEMICOLON, 'Expected ";" after declaration.')
-        return ast.Variable(name, ty, value)
+        return ast.Variable(name, ty, value, length)
 
     def statement(self) -> ast.Stmt:
         start = self.current
@@ -126,7 +132,7 @@ class _Parser:
         targets = []
         value = self.binary(1)
         while (equals := self.take(Kind.ASSIGN)) is not None:
-            if not isinstance(value, ast.Name):
+            if not isinstance(value, (ast.Name, ast.Index)):
                 raise ParseError(equals, 'Expected a name before "=".')
             targets.append((equals, value))
             value = self.binary(1)
@@ -156,6 +162,10 @@ class _Parser:
         if token.kind in (Kind.INTEGER, Kind.TRUE, Kind.FALSE):
             return ast.Literal(self.advance())
         if self.take(Kind.IDENTIFIER):
+            if self.take(Kind.LEFT_BRACKET):
+                index = self.expression()
+                self.expect(Kind.RIGHT_BRACKET, 'Expected "]" after array index.')
+                return ast.Index(token, index)
             if self.take(Kind.LEFT_PAREN):
                 arguments = self.comma_list(self.expression)
                 self.expect(Kind.RIGHT_PAREN, 'Expected ")" after arguments.')

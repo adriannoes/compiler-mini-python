@@ -1,4 +1,4 @@
-"""Represent and print stack instructions for scalar Mini-C programs."""
+"""Represent and print stack instructions for Mini-C programs."""
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -15,6 +15,9 @@ class Op(Enum):
     LOAD_LOCAL = auto()
     STORE_LOCAL = auto()
     RESET_LOCAL = auto()
+    CHECK_INDEX = auto()
+    LOAD_ELEMENT = auto()
+    STORE_ELEMENT = auto()
     POP = auto()
     NEGATE = auto()
     NOT = auto()
@@ -82,6 +85,7 @@ def constant_value(constant: Constant, token: Token) -> Union[IntValue, BoolValu
 class Local:
     name: Token
     type: Type
+    length: Optional[int] = None
 
 
 @dataclass
@@ -109,7 +113,8 @@ def format_bytecode(program: BytecodeProgram) -> str:
         lines.append(f'function {function_index} "{function.name.text}" {function.result.value} '
                      f'parameters={function.parameter_count} {_position(function.name)}')
         for slot, local in enumerate(function.locals):
-            lines.append(f'  local {slot} "{local.name.text}" {local.type.value} {_position(local.name)}')
+            length = "" if local.length is None else f"[{local.length}]"
+            lines.append(f'  local {slot} "{local.name.text}" {local.type.value}{length} {_position(local.name)}')
         for index, constant in enumerate(function.constants):
             if isinstance(constant, IntegerConstant):
                 sign = "-" if constant.negative else ""

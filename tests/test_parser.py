@@ -52,7 +52,7 @@ class ParserTests(unittest.TestCase):
             (b"int f() { if (true)\nint x; }", (2, 1), "Expected an expression. Received INT."),
             (b"int f() { g()\n= ; }", (2, 1), 'Expected a name before "=".'),
             (b"int f() { return 1;\r\n", (2, 1), 'Expected "}" after block. Received EOF.'),
-            (b"int f() { int a[2]; }", (1, 16), 'Expected ";" after declaration. Received LEFT_BRACKET.'),
+            (b"int f() { int a[2][3]; }", (1, 19), 'Expected ";" after declaration. Received LEFT_BRACKET.'),
         ]
         for source, position, message in cases:
             with self.subTest(source=source):
