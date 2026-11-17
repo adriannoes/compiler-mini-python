@@ -1,6 +1,11 @@
 # Mini-C in Python
 
 This project uses Python to analyze and execute programs written in Mini-C.
+It continues the study in [Mini-C in C++](../compiler-mini-c/README.md) and [Mini-C in Rust](../compiler-mini-rust/README.md).
+The [architecture](docs/architecture.md) follows both execution paths and compares their implementation choices.
+The [language contract](docs/language.md) defines the supported syntax and behavior.
+The [roadmap](docs/roadmap.md) connects the Python phases to the predecessor files, tests, and Git milestones.
+
 A lexer separates source text into units called tokens.
 It recognizes 35 token kinds, including keywords, identifiers, decimal integers, operators, delimiters, and the end of input.
 
