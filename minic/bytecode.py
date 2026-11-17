@@ -5,6 +5,7 @@ from enum import Enum, auto
 from typing import Optional, Union
 
 from .lexer import Token, TokenKind as Kind
+from .runtime import BoolValue, IntValue, integer_literal
 from .type_checker import Type
 
 
@@ -44,6 +45,13 @@ BINARY_OPS = {
     Kind.LESS: Op.LESS, Kind.LESS_EQUAL: Op.LESS_EQUAL,
     Kind.GREATER: Op.GREATER, Kind.GREATER_EQUAL: Op.GREATER_EQUAL,
 }
+BINARY_KINDS = {op: kind for kind, op in BINARY_OPS.items()}
+UNARY_KINDS = {Op.NOT: Kind.BANG, Op.NEGATE: Kind.MINUS}
+
+
+class InvalidBytecode(ValueError):
+    def __init__(self, message: str):
+        super().__init__(f"Invalid bytecode: {message}")
 
 
 @dataclass(frozen=True)
@@ -60,6 +68,14 @@ class IntegerConstant:
 
 
 Constant = Union[IntegerConstant, bool]
+
+
+def constant_value(constant: Constant, token: Token) -> Union[IntValue, BoolValue]:
+    if isinstance(constant, IntegerConstant):
+        return integer_literal(constant.digits, constant.negative, token)
+    if isinstance(constant, bool):
+        return BoolValue(constant)
+    raise InvalidBytecode("The constant must be an integer or a boolean.")
 
 
 @dataclass(frozen=True)
