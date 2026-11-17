@@ -35,12 +35,21 @@ def main() -> int:
 
     def run(label, command, expected=None):
         command = [str(part) for part in command]
+        entry = {"label": label, "arguments": command, "exit_status": None,
+                 "stdout": "", "stderr": ""}
+        report["commands"].append(entry)
         try:
             result = subprocess.run(command, cwd=ROOT, env=environment, capture_output=True, timeout=30)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as error:
+            entry.update({"error": "timeout", "timeout_seconds": error.timeout,
+                          "stdout": (error.stdout or b"").decode("utf-8", errors="replace"),
+                          "stderr": (error.stderr or b"").decode("utf-8", errors="replace")})
             raise RuntimeError(f"{label}: the command exceeded 30 seconds.") from None
-        report["commands"].append({
-            "label": label, "arguments": command, "exit_status": result.returncode,
+        except OSError as error:
+            entry.update({"error": "startup", "message": str(error)})
+            raise
+        entry.update({
+            "exit_status": result.returncode,
             "stdout": result.stdout.decode("utf-8", errors="replace"),
             "stderr": result.stderr.decode("utf-8", errors="replace"),
         })
