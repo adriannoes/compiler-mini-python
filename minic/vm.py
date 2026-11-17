@@ -3,20 +3,14 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .bytecode import BINARY_OPS, BytecodeFunction, BytecodeProgram, Instruction, IntegerConstant, Op
+from .bytecode import (
+    BINARY_KINDS, UNARY_KINDS, BytecodeFunction, BytecodeProgram, Instruction, InvalidBytecode, Op, constant_value,
+)
 from .lexer import Token, TokenKind as Kind
 from .runtime import (
-    VOID, BoolValue, ExecutionError, ExecutionLimits, IntValue, Value, apply_binary, apply_unary, integer_literal,
+    VOID, BoolValue, ExecutionError, ExecutionLimits, IntValue, Value, apply_binary, apply_unary,
 )
 from .type_checker import Type
-
-
-_BINARY_KINDS = {op: kind for kind, op in BINARY_OPS.items()}
-
-
-class InvalidBytecode(ValueError):
-    def __init__(self, message: str):
-        super().__init__(f"Invalid bytecode: {message}")
 
 
 def _index(operand: Optional[int], size: int, message: str) -> int:
@@ -86,13 +80,7 @@ class _Frame:
     def load_constant(self, instruction: Instruction) -> None:
         constants = self.function.constants
         index = _index(instruction.operand, len(constants), "The constant index is outside the function.")
-        constant = constants[index]
-        if isinstance(constant, IntegerConstant):
-            self.stack.append(integer_literal(constant.digits, constant.negative, instruction.token))
-        elif isinstance(constant, bool):
-            self.stack.append(BoolValue(constant))
-        else:
-            raise InvalidBytecode("The constant must be an integer or a boolean.")
+        self.stack.append(constant_value(constants[index], instruction.token))
 
     def apply_binary(self, instruction: Instruction) -> None:
         right = self.pop()
@@ -101,7 +89,7 @@ class _Frame:
         expected = Type.BOOL if equality and isinstance(right, BoolValue) else Type.INT
         _require_type(left, expected)
         _require_type(right, expected)
-        self.stack.append(apply_binary(_BINARY_KINDS[instruction.op], left, right, instruction.token))
+        self.stack.append(apply_binary(BINARY_KINDS[instruction.op], left, right, instruction.token))
 
     def finish(self, op: Op) -> Value:
         if op is Op.RETURN:
@@ -144,12 +132,11 @@ def execute_bytecode(
             frame.local_instruction(instruction)
         elif op is Op.POP:
             frame.pop()
-        elif op in (Op.NEGATE, Op.NOT):
+        elif op in UNARY_KINDS:
             value = frame.pop()
             _require_type(value, Type.INT if op is Op.NEGATE else Type.BOOL)
-            kind = Kind.MINUS if op is Op.NEGATE else Kind.BANG
-            frame.stack.append(apply_unary(kind, value, token))
-        elif op in _BINARY_KINDS:
+            frame.stack.append(apply_unary(UNARY_KINDS[op], value, token))
+        elif op in BINARY_KINDS:
             frame.apply_binary(instruction)
         elif op is Op.JUMP:
             frame.jump(instruction.operand)

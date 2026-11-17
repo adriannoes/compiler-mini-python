@@ -6,21 +6,28 @@ import sys
 from .ast_printer import format_ast
 from .bytecode import format_bytecode
 from .bytecode_compiler import compile_bytecode
+from .bytecode_optimizer import optimize_bytecode
 from .interpreter import interpret
 from .lexer import LexError, lex
 from .parser import ParseError, parse
 from .resolver import AnalysisError, format_resolution, resolve_names
-from .runtime import VOID, ExecutionError
+from .runtime import VOID, ExecutionError, Value
 from .type_checker import check_types
 from .vm import execute_bytecode
 
 
-MODES = ("--tokens", "--ast", "--resolve", "--check", "--bytecode", "--run", "--run-vm")
+MODES = ("--tokens", "--ast", "--resolve", "--check", "--bytecode", "--bytecode-opt",
+         "--run", "--run-vm", "--run-vm-opt")
 
 
 def error(message: str) -> int:
     sys.stderr.buffer.write(os.fsencode(message) + b"\n")
     return 1
+
+
+def print_result(value: Value) -> None:
+    if value is not VOID:
+        sys.stdout.buffer.write(f"{value}\n".encode("ascii"))
 
 
 def main(args: list[str]) -> int:
@@ -31,7 +38,7 @@ def main(args: list[str]) -> int:
         mode = args[0] if args and args[0] in MODES else "--tokens"
         return error(f"minic: error: Expected {mode} <file>. Use --help for usage.")
 
-    path = args[1]
+    mode, path = args
     try:
         source_file = open(path, "rb")
     except OSError:
@@ -45,24 +52,28 @@ def main(args: list[str]) -> int:
 
     try:
         tokens = lex(source)
-        if args[0] == "--tokens":
+        if mode == "--tokens":
             for token in tokens:
                 row = f'{token.line}:{token.column} {token.kind.name} "{token.text}"\n'
                 sys.stdout.buffer.write(row.encode("ascii"))
         else:
             tree = parse(tokens)
-            if args[0] == "--ast":
+            if mode == "--ast":
                 sys.stdout.buffer.write(format_ast(tree).encode("ascii"))
-            elif args[0] == "--resolve":
+            elif mode == "--resolve":
                 sys.stdout.buffer.write(format_resolution(resolve_names(tree)).encode("ascii"))
-            elif args[0] == "--check":
+            elif mode == "--check":
                 check_types(tree)
-            elif args[0] == "--bytecode":
-                sys.stdout.buffer.write(format_bytecode(compile_bytecode(tree)).encode("ascii"))
+            elif mode == "--run":
+                print_result(interpret(tree))
             else:
-                value = interpret(tree) if args[0] == "--run" else execute_bytecode(compile_bytecode(tree))
-                if value is not VOID:
-                    sys.stdout.buffer.write(f"{value}\n".encode("ascii"))
+                program = compile_bytecode(tree)
+                if mode in ("--bytecode-opt", "--run-vm-opt"):
+                    program = optimize_bytecode(program)
+                if mode in ("--bytecode", "--bytecode-opt"):
+                    sys.stdout.buffer.write(format_bytecode(program).encode("ascii"))
+                else:
+                    print_result(execute_bytecode(program))
     except (LexError, ParseError, AnalysisError, ExecutionError) as exc:
         return error(f"{path}:{exc.line}:{exc.column}: error: {exc}")
     return 0
