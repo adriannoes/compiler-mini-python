@@ -7,6 +7,8 @@ The [language contract](docs/language.md) defines the supported syntax and behav
 The [roadmap](docs/roadmap.md) connects the Python phases to the predecessor files, tests, and Git milestones.
 The [parsing study](docs/theory-parsing.md) connects grammar sets and bottom-up traces to the Python parser.
 The [control-flow](docs/control-flow.md) and [stack](docs/stack-analysis.md) studies explain bytecode analysis before execution.
+The [LLVM study](docs/theory-llvm.md) compares loop execution with native C and Rust builds.
+The [validation guide](docs/validation.md) describes generated programs, independent expected results, and reference comparisons.
 
 A lexer separates source text into units called tokens.
 It recognizes 35 token kinds, including keywords, identifiers, decimal integers, operators, delimiters, and the end of input.
