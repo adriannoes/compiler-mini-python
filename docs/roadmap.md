@@ -102,3 +102,16 @@ The comparison contract covers the selected command and input files.
 Python's help describes `python3 -m minic`, while the predecessor help describes their executables.
 The Python CLI reports a directory input as `Cannot open file.` on the current macOS host.
 The C++ and Rust references treat that input as empty source. The file comparison script requires regular files.
+
+## Extension sequence
+
+These phases extend the study with executable exercises and static bytecode analysis.
+Each phase uses a separate branch and local integration after its tests pass.
+
+| Phase | Delivery | Acceptance | Status |
+|---|---|---|---|
+| 11 | [Parsing theory](theory-parsing.md) and a [grammar laboratory](../labs/parsing/grammar.py) | Compute nullable, FIRST, FOLLOW, and predictive conflicts. Relate the results to the production parser. | Complete |
+| 12 | Control-flow graphs and bytecode inspection | Identify blocks, successors, and unreachable instructions before and after optimization. | Planned |
+| 13 | Static bytecode verification | Reject invalid metadata, operands, stack joins, returns, and cycles without source steps before VM execution. | Planned |
+| 14 | A separate LLVM laboratory | Compare bounded Mini-C, C, and Rust results and inspect generated LLVM IR. Record the tool versions. | Planned |
+| 15 | Generated cases and final validation | Test all Python engines, compare both references, run the laboratories, and run the complete suite. | Planned |
