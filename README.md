@@ -226,6 +226,36 @@ Both Python engines use the same checked arithmetic and report errors at the sou
 The library can execute the same bytecode several times with different entry functions or limits through `execute_bytecode(program, entry, limits)`.
 Each execution starts with fresh frames and a fresh step budget.
 
+## Optimize the bytecode
+
+From the repository root, compare the two listings for [optimization.mc](examples/optimization.mc). Then execute the optimized program.
+
+```sh
+python3 -m minic --bytecode examples/optimization.mc
+python3 -m minic --bytecode-opt examples/optimization.mc
+python3 -m minic --run-vm-opt examples/optimization.mc
+```
+
+The first listing has 69 instructions. The optimized listing has 36, and the VM prints `24` with either version.
+
+| Source expression | Change in the optimized listing |
+|---|---|
+| `(2 + 3) * 4` | The optimizer computes `20` at compile time. Instruction 8 loads constant 13, which holds that result. |
+| `if (1 < 2)` | The condition always selects the first branch. The optimizer removes the other branch, including its division by zero. |
+| `(6 * 7);` | The program discards the product. The optimizer removes the calculation and keeps the four source steps at offsets 28 through 31. |
+
+During constant folding, the [optimizer](minic/bytecode_optimizer.py) evaluates an operation when it knows all the operands.
+It uses the same signed 64-bit arithmetic as the VM.
+If an operation fails during folding, the optimizer retains it. For example, a reachable `1 / 0;` still fails at the division, even if the program discards its result.
+A local read can also fail. In `x * 0`, execution still reads `x` and reports an error if it has no value.
+
+The optimizer tracks known operands within a basic block, a sequence of instructions with one entry and no internal branches.
+Calls, local reads, and stores clear this information. After deleting instructions, the optimizer updates jump targets to their new offsets.
+It repeats the rewrites until the listing is stable. Each reachable `STEP` keeps its position so both VM modes count the same source steps.
+
+The C++ optimizer copies the program, and Rust clones it. In Python, `optimize_bytecode(program)` copies each function's mutable lists and shares immutable records.
+This lets you inspect the original and optimized listings side by side.
+
 ## Tests
 
 From the repository root, run the tests with the Python standard library.
@@ -243,6 +273,8 @@ With both reference executables available, compare the three implementations fro
 python3 scripts/compare_cli.py run examples/factorial.mc examples/runtime_error.mc
 python3 scripts/compare_cli.py bytecode examples/short_circuit.mc examples/type_error.mc
 python3 scripts/compare_cli.py run-vm examples/factorial.mc examples/runtime_error.mc
+python3 scripts/compare_cli.py bytecode-opt examples/optimization.mc
+python3 scripts/compare_cli.py run-vm-opt examples/optimization.mc examples/runtime_error.mc
 ```
 
 The script runs each command on the same input and compares the exit status, standard output, and standard error.
