@@ -1,19 +1,57 @@
 # Mini-C in Python
 
-This project uses Python to analyze and execute programs written in Mini-C.
-It continues the study in [Mini-C in C++](../compiler-mini-c/README.md) and [Mini-C in Rust](../compiler-mini-rust/README.md).
-The [architecture](docs/architecture.md) follows both execution paths and compares their implementation choices.
-The [language contract](docs/language.md) defines the supported syntax and behavior.
-The [roadmap](docs/roadmap.md) connects the Python phases to the predecessor files, tests, and Git milestones.
-The [parsing study](docs/theory-parsing.md) connects grammar sets and bottom-up traces to the Python parser.
-The [control-flow](docs/control-flow.md) and [stack](docs/stack-analysis.md) studies explain bytecode analysis before execution.
-The [LLVM study](docs/theory-llvm.md) compares loop execution with native C and Rust builds.
-The [validation guide](docs/validation.md) describes generated programs, independent expected results, and reference comparisons.
+This educational compiler uses Python to analyze and execute Mini-C programs.
+It continues the study in [Mini-C in C++](https://github.com/adriannoes/compiler-mini-c/blob/main/README.md) and [Mini-C in Rust](https://github.com/adriannoes/compiler-mini-rust/blob/main/README.md).
+The project uses the [MIT license](LICENSE).
+
+## Start here
+
+The compiler requires Python 3.9 or later. It uses only Python's standard library, including for its tests.
+The [recorded test run](docs/validation.md#acceptance-and-limits) used Python 3.14.7 on macOS.
+The source passed a Python 3.9 syntax inspection, but the suite did not run on a Python 3.9 interpreter.
+
+With Git and Python available on `PATH`, clone the repository.
+
+```sh
+git clone https://github.com/adriannoes/compiler-mini-python.git
+```
+
+Enter the cloned directory. This directory is the repository root for the commands below.
+
+```sh
+cd compiler-mini-python
+```
+
+From the repository root, run the factorial example through each execution mode.
+
+```sh
+python3 -m minic --run examples/factorial.mc
+python3 -m minic --run-vm examples/factorial.mc
+python3 -m minic --run-vm-opt examples/factorial.mc
+```
+
+Each command prints `720` and exits with status 0. The sections below explain the stages and their implementation choices.
+Native compilers are separate requirements for reference comparisons and the LLVM laboratory.
+
+## Study guides
+
+| Guide | What you learn |
+|---|---|
+| [Architecture](docs/architecture.md) | Both execution paths, module responsibilities, and choices across the three implementations |
+| [Language contract](docs/language.md) | Supported syntax, types, execution rules, and diagnostics |
+| [Roadmap](docs/roadmap.md) | Python phases, predecessor files, tests, and Git milestones |
+| [Parsing theory](docs/theory-parsing.md) | Grammar sets, bottom-up traces, and their connections to the Python parser |
+| [Control flow](docs/control-flow.md) | Bytecode blocks, jumps, and reachable instructions |
+| [Stack analysis](docs/stack-analysis.md) | Operand types and bytecode verification before execution |
+| [LLVM laboratory](docs/theory-llvm.md) | Loop execution compared with native C and Rust builds |
+| [Validation](docs/validation.md) | Generated programs, independent expected results, and reference comparisons |
+
+## Read tokens
 
 A lexer separates source text into units called tokens.
 It recognizes 35 token kinds, including keywords, identifiers, decimal integers, operators, delimiters, and the end of input.
 
-From the repository root, list the tokens in the example with Python 3.9 or later.
+From the repository root, list the tokens in the example.
 
 ```sh
 python3 -m minic --tokens examples/hello.mc
@@ -39,9 +77,9 @@ python3 -m minic --tokens examples/arrays.mc
 In the first example, `-1` produces a `MINUS` token and an `INTEGER` token.
 In the second, `values[4]` produces four tokens, including a token for each bracket.
 
-The scanner reads a complete name before it looks up a keyword.
+The lexer reads a complete name before it compares that name with the keywords.
 For example, `while` is a keyword and `while2` is an identifier.
-For operators, the scanner tries the longest supported spelling first.
+For operators, the lexer tries the longest supported spelling first.
 The input `===` gives `==` followed by `=`.
 In `=/**/=`, the comment separates the two `=` tokens.
 A single `&` or `|` reports an error at that byte.
@@ -169,7 +207,8 @@ The library accepts another entry name and custom limits through `interpret(prog
 
 ## Read the bytecode
 
-Bytecode is a sequence of instructions for a virtual machine. From the repository root, compile the example and print its instructions.
+Bytecode is a sequence of instructions for a virtual machine.
+From the repository root, compile the example to print its instructions.
 
 ```sh
 python3 -m minic --bytecode examples/hello.mc
@@ -271,7 +310,7 @@ An array holds a fixed number of elements of one type. Mini-C accepts local decl
 The length must be a decimal literal from 1 through 1024. Functions accept and return scalar values, including individual array elements.
 Declarations create arrays with uninitialized elements. Each element acquires a value through an indexed assignment.
 
-From the repository root, inspect the array example and execute it on all three engines.
+From the repository root, inspect the array example. Then execute it on all three engines.
 
 ```sh
 python3 -m minic --ast examples/arrays.mc
@@ -323,6 +362,7 @@ python3 -m unittest discover -s tests
 The command tests compare the exit status and the bytes on both output streams.
 The [expected token listings, syntax trees, name bindings, and bytecode listings](tests/fixtures) come from the C++ compiler.
 
+For reference comparisons, follow the build instructions in the [C++ README](https://github.com/adriannoes/compiler-mini-c/blob/main/README.md) and [Rust README](https://github.com/adriannoes/compiler-mini-rust/blob/main/README.md).
 With both reference executables available, compare the three implementations from the repository root.
 
 ```sh

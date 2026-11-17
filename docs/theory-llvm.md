@@ -81,6 +81,6 @@ The five inputs cover a negative limit, an empty loop, one iteration, and two lo
 The script requires 45 matching executions across nine paths. Every execution must have the expected output, status 0, and empty standard error.
 It also rejects compiler warnings and records a failure when a command exceeds its timeout.
 
-The predecessors supply complementary examples: the [C++ project's C laboratory](../../compiler-mini-c/docs/theory-llvm.md)
-and the [Rust loop study](../../compiler-mini-rust/labs/loop-ir/README.md).
+The predecessors supply complementary examples: the [C++ project's C laboratory](https://github.com/adriannoes/compiler-mini-c/blob/main/docs/theory-llvm.md)
+and the [Rust loop study](https://github.com/adriannoes/compiler-mini-rust/blob/main/labs/loop-ir/README.md).
 The Python experiment combines both native comparisons in one reproducible run.

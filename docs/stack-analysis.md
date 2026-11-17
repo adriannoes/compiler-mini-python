@@ -103,7 +103,7 @@ Bytecode function records contain mutable lists, so the verifier does not cache 
 Each public execution and optimization request analyzes the current records again.
 This costs an additional pass but detects mutations after an earlier successful analysis.
 
-The [Rust verifier](../../compiler-mini-rust/src/bytecode/stack_analysis.rs) supplies a test-only comparison for stack heights and types.
+The [Rust verifier](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/bytecode/stack_analysis.rs) supplies a test-only comparison for stack heights and types.
 Python uses the analysis during execution and optimization and also checks instruction metadata and source-step cycles.
 
 From the repository root, run the verifier tests.

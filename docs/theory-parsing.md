@@ -96,7 +96,7 @@ Unresolved names remain valid syntax. The resolver reports those names only when
 | Unary chains | `unary()` collects operators and constructs nodes in reverse order. | Long chains do not add Python calls for each operator. |
 | Shared name prefix | `primary()` consumes a name before inspecting `(` or `[`. | Names, calls, and indices share one initial token. |
 
-The [C++ parser](../../compiler-mini-c/src/parser.cpp) and [Rust parser](../../compiler-mini-rust/src/parser.rs) recursively parse assignment values and unary operands.
+The [C++ parser](https://github.com/adriannoes/compiler-mini-c/blob/main/src/parser.cpp) and [Rust parser](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/parser.rs) recursively parse assignment values and unary operands.
 Python uses temporary lists for those chains. This costs temporary storage and avoids dependence on Python's call-depth limit for each operator.
 Nested parentheses and statements still use recursive calls. Excessive nesting produces the positioned parse error defined in the language contract.
 
@@ -174,4 +174,4 @@ PYTHONPATH=tests python3 -m unittest test_parsing_lab test_parser
 ```
 
 The tests cover nullable cycles, FIRST/FOLLOW propagation, rule-order independence, conflicting table entries, and Mini-C's nearest-if rule.
-The [C++ study](../../compiler-mini-c/docs/theory-parsing.md) provides a longer comparison of parser generators and LR variants.
+The [C++ study](https://github.com/adriannoes/compiler-mini-c/blob/main/docs/theory-parsing.md) provides a longer comparison of parser generators and LR variants.

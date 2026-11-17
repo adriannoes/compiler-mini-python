@@ -112,5 +112,5 @@ PYTHONPATH=tests python3 -m unittest test_control_flow
 ```
 
 The tests cover loops, joins, dead code, invalid targets, long graphs, and the inspection command.
-The [Rust exercise](../../compiler-mini-rust/docs/control-flow.md) traces the corresponding bytecode manually.
+The [Rust exercise](https://github.com/adriannoes/compiler-mini-rust/blob/main/docs/control-flow.md) traces the corresponding bytecode manually.
 Python records the same graph concepts in an API that later analyses can reuse.

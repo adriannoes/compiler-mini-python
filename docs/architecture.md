@@ -91,8 +91,8 @@ The [stack study](stack-analysis.md) describes the guarantees and runtime checks
 
 The AST and runtime definitions provide the corresponding representations in the two predecessors.
 The VM source shows each frame's storage and instruction pointer.
-[C++ AST](../../compiler-mini-c/src/ast.hpp), [C++ runtime](../../compiler-mini-c/src/runtime.hpp), [C++ VM](../../compiler-mini-c/src/vm.cpp),
-[Rust AST](../../compiler-mini-rust/src/ast.rs), [Rust runtime](../../compiler-mini-rust/src/runtime.rs), [Rust VM](../../compiler-mini-rust/src/vm.rs).
+[C++ AST](https://github.com/adriannoes/compiler-mini-c/blob/main/src/ast.hpp), [C++ runtime](https://github.com/adriannoes/compiler-mini-c/blob/main/src/runtime.hpp), [C++ VM](https://github.com/adriannoes/compiler-mini-c/blob/main/src/vm.cpp),
+[Rust AST](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/ast.rs), [Rust runtime](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/runtime.rs), [Rust VM](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/vm.rs).
 
 Object identity keeps two nodes distinct even when their text and positions match.
 Python analysis tables retain those objects, which also retains their storage for the lifetime of the tables.
