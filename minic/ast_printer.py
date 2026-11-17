@@ -22,6 +22,8 @@ def _describe(entry: _Entry) -> tuple[str, tuple[_Entry, ...]]:
     if isinstance(entry, _Branch):
         return entry.label, (entry.child,)
     if isinstance(entry, Token):
+        if entry.kind is TokenKind.INTEGER:
+            return f'Length "{entry.text}"', ()
         return f"Type {entry.kind.name}", ()
     token = entry.token
     if isinstance(entry, ast.Function):
@@ -32,6 +34,8 @@ def _describe(entry: _Entry) -> tuple[str, tuple[_Entry, ...]]:
         return "Block", entry.statements
     if isinstance(entry, ast.Variable):
         children = (entry.type_token,)
+        if entry.length is not None:
+            children += (entry.length,)
         if entry.initializer is not None:
             children += (entry.initializer,)
         return f'Variable "{token.text}"', children
@@ -50,6 +54,8 @@ def _describe(entry: _Entry) -> tuple[str, tuple[_Entry, ...]]:
         return "While", (_Branch("Condition", entry.condition), _Branch("Body", entry.body))
     if isinstance(entry, ast.Name):
         return f'Name "{token.text}"', ()
+    if isinstance(entry, ast.Index):
+        return f'Index "{token.text}"', (entry.index,)
     if isinstance(entry, ast.Literal):
         if token.kind is TokenKind.INTEGER:
             return f'Integer "{token.text}"', ()

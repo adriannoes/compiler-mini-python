@@ -1,20 +1,23 @@
-"""Execute a checked scalar Mini-C syntax tree."""
+"""Execute a checked Mini-C syntax tree."""
 
 from dataclasses import dataclass, field
 from typing import Generator, Optional, Union
 
 from . import ast
 from .lexer import Token, TokenKind as Kind
-from .resolver import Declaration, Resolution
-from .runtime import VOID, BoolValue, ExecutionError, ExecutionLimits, Value, binary, integer_literal, unary
-from .type_checker import check_types
+from .resolver import Declaration
+from .runtime import (
+    VOID, ArrayStorage, BoolValue, ExecutionError, ExecutionLimits, IntValue, Storage, Value,
+    binary, integer_literal, unary,
+)
+from .type_checker import TypeAnalysis, check_types
 
 
 @dataclass
 class _Frame:
     function: ast.Function
     depth: int
-    slots: dict[Declaration, Optional[Value]] = field(default_factory=dict)
+    slots: dict[Declaration, Storage] = field(default_factory=dict)
 
 
 _Node = Union[ast.Expr, ast.Stmt]
@@ -22,8 +25,9 @@ _Visit = Generator[Union[_Node, _Frame], Optional[Value], Optional[Value]]
 
 
 class _Interpreter:
-    def __init__(self, resolution: Resolution, limits: ExecutionLimits):
-        self.bindings = resolution.bindings
+    def __init__(self, analysis: TypeAnalysis, limits: ExecutionLimits):
+        self.bindings = analysis.resolution.bindings
+        self.lengths = analysis.lengths
         self.steps_left = limits.max_steps
         self.max_depth = limits.max_call_depth
 
@@ -67,7 +71,7 @@ class _Interpreter:
                 if returned is not None:
                     return returned
         elif isinstance(stmt, ast.Variable):
-            frame.slots[stmt] = None
+            frame.slots[stmt] = ArrayStorage([None] * self.lengths[stmt]) if stmt in self.lengths else None
             if stmt.initializer is not None:
                 frame.slots[stmt] = yield stmt.initializer
         elif isinstance(stmt, ast.ExpressionStmt):
@@ -101,10 +105,27 @@ class _Interpreter:
             return BoolValue(token.kind is Kind.TRUE)
         if isinstance(expr, ast.Name):
             value = frame.slots[self.bindings[expr].symbol.declaration]
+            assert not isinstance(value, ArrayStorage)
             if value is None:
                 raise ExecutionError(token, f'The variable "{token.text}" has no value.')
             return value
+        if isinstance(expr, ast.Index):
+            index = yield expr.index
+            array = frame.slots[self.bindings[expr].symbol.declaration]
+            assert isinstance(array, ArrayStorage) and isinstance(index, IntValue)
+            offset = array.offset(index, token.text, token)
+            return array.load(offset, token.text, token)
         if isinstance(expr, ast.Assign):
+            if isinstance(expr.target, ast.Index):
+                target = expr.target
+                self.step(target.token)
+                index = yield target.index
+                array = frame.slots[self.bindings[target].symbol.declaration]
+                assert isinstance(array, ArrayStorage) and isinstance(index, IntValue)
+                offset = array.offset(index, target.token.text, target.token)
+                value = yield expr.value
+                array.elements[offset] = value
+                return value
             value = yield expr.value
             frame.slots[self.bindings[expr.target].symbol.declaration] = value
             return value
@@ -148,6 +169,6 @@ def interpret(program: ast.Program, entry: str = "main", limits: ExecutionLimits
         if function.token.text == entry:
             if function.parameters:
                 raise ExecutionError(function.token, f'The entry function "{entry}" must not have parameters.')
-            return _Interpreter(analysis.resolution, limits).run(function)
+            return _Interpreter(analysis, limits).run(function)
     start = Token(Kind.EOF, "", 1, 1)
     raise ExecutionError(start, f'The entry function "{entry}" does not exist.')

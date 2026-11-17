@@ -1,4 +1,4 @@
-"""Compile a checked syntax tree into scalar Mini-C bytecode."""
+"""Compile a checked syntax tree into Mini-C bytecode."""
 
 from dataclasses import replace
 from typing import Iterator, Optional, Union
@@ -27,10 +27,11 @@ class _Compiler:
     def add_local(self, declaration: _LocalDeclaration) -> int:
         slot = len(self.function.locals)
         self.slots[declaration] = slot
-        self.function.locals.append(Local(declaration.token, Type(declaration.type_token.text)))
+        length = self.analysis.lengths.get(declaration)
+        self.function.locals.append(Local(declaration.token, Type(declaration.type_token.text), length))
         return slot
 
-    def slot(self, name: ast.Name) -> int:
+    def slot(self, name: Union[ast.Name, ast.Index]) -> int:
         declaration = self.analysis.resolution.bindings[name].symbol.declaration
         assert isinstance(declaration, (ast.Parameter, ast.Variable))
         return self.slots[declaration]
@@ -100,9 +101,20 @@ class _Compiler:
                 self.constant(token.kind is Kind.TRUE, token)
         elif isinstance(expr, ast.Name):
             self.emit(Op.LOAD_LOCAL, token, self.slot(expr))
+        elif isinstance(expr, ast.Index):
+            yield expr.index
+            self.emit(Op.LOAD_ELEMENT, token, self.slot(expr))
         elif isinstance(expr, ast.Assign):
-            yield expr.value
-            self.emit(Op.STORE_LOCAL, token, self.slot(expr.target))
+            slot = self.slot(expr.target)
+            if isinstance(expr.target, ast.Index):
+                self.emit(Op.STEP, expr.target.token)
+                yield expr.target.index
+                self.emit(Op.CHECK_INDEX, expr.target.token, slot)
+                yield expr.value
+                self.emit(Op.STORE_ELEMENT, expr.target.token, slot)
+            else:
+                yield expr.value
+                self.emit(Op.STORE_LOCAL, token, slot)
         elif isinstance(expr, ast.Call):
             yield from expr.arguments
             function = self.analysis.resolution.bindings[expr].symbol.declaration

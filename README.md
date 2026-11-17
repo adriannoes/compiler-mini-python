@@ -39,7 +39,7 @@ A single `&` or `|` reports an error at that byte.
 
 ## Read a syntax tree
 
-The parser groups the tokens of a scalar Mini-C program into an abstract syntax tree (AST).
+The parser groups the tokens of a Mini-C program into an abstract syntax tree (AST).
 From the repository root, print the tree for the example.
 
 ```sh
@@ -76,7 +76,7 @@ Rust looks up precedence in a function. Python reads it from a table.
 A block accepts declarations and statements. A type keyword starts a declaration.
 After `if (condition)`, the parser expects one statement. Braces allow declarations inside that statement.
 The parser accepts unknown names and mixed types. The next two commands analyze names and types.
-Array syntax also belongs to a later phase. Deeply nested syntax can reach the Python recursion limit.
+Deeply nested syntax can reach the Python recursion limit.
 
 The command scans the whole file before it parses any tokens. A lexical error therefore takes priority over an earlier syntax error.
 On a syntax error, the command writes the first diagnostic to standard error, leaves standard output empty, and exits with status 1.
@@ -256,6 +256,53 @@ It repeats the rewrites until the listing is stable. Each reachable `STEP` keeps
 The C++ optimizer copies the program, and Rust clones it. In Python, `optimize_bytecode(program)` copies each function's mutable lists and shares immutable records.
 This lets you inspect the original and optimized listings side by side.
 
+## Use local arrays
+
+An array holds a fixed number of elements of one type. Mini-C accepts local declarations such as `int values[4];` and `bool flags[2];`.
+The length must be a decimal literal from 1 through 1024. Functions accept and return scalar values, including individual array elements.
+Declarations create arrays with uninitialized elements. Each element acquires a value through an indexed assignment.
+
+From the repository root, inspect the array example and execute it on all three engines.
+
+```sh
+python3 -m minic --ast examples/arrays.mc
+python3 -m minic --run examples/arrays.mc
+python3 -m minic --run-vm examples/arrays.mc
+python3 -m minic --run-vm-opt examples/arrays.mc
+```
+
+Each execution prints `10`. The syntax tree shows the length under each declaration and an `Index` node at each element access.
+The parser preserves length digits such as `0004`. The type checker checks the length, the integer index, and the element type after name resolution.
+
+An assignment such as `values[i] = (i = 1)` evaluates and checks the index first. It saves that index before it evaluates the right operand.
+If `i` starts at zero, this assignment stores `1` in `values[0]`. An invalid index reports an error before the right operand executes.
+
+| Bytecode instruction | Operand stack behavior |
+|---|---|
+| `CHECK_INDEX slot` | Check the index at the top and keep it for the later write. |
+| `LOAD_ELEMENT slot` | Consume the index and push the element value. |
+| `STORE_ELEMENT slot` | Consume the value and saved index, write the element, and push the assigned value. |
+
+C++ and Rust allocate a vector of optional values for an array. Python uses a list of optional scalar values in `ArrayStorage`.
+The bounds test runs before list indexing, so a negative index reports a Mini-C error.
+Each execution of a declaration allocates fresh storage, including inside a loop. Recursive calls therefore keep independent elements.
+Initialization tracking costs one optional value per element and lets each engine identify a read before assignment.
+
+From the repository root, run the example with an uninitialized element.
+
+```sh
+python3 -m minic --run-vm-opt examples/array_error.mc
+```
+
+The command exits with status 1 and writes this diagnostic to standard error.
+
+```text
+examples/array_error.mc:5:10: error: The array element "values[1]" has no value.
+```
+
+Bounds and missing-value errors point to the array name in the indexed access.
+The optimizer keeps element reads, checks, and writes because they can fail or change a value.
+
 ## Tests
 
 From the repository root, run the tests with the Python standard library.
@@ -275,6 +322,7 @@ python3 scripts/compare_cli.py bytecode examples/short_circuit.mc examples/type_
 python3 scripts/compare_cli.py run-vm examples/factorial.mc examples/runtime_error.mc
 python3 scripts/compare_cli.py bytecode-opt examples/optimization.mc
 python3 scripts/compare_cli.py run-vm-opt examples/optimization.mc examples/runtime_error.mc
+python3 scripts/compare_cli.py run-vm-opt examples/arrays.mc examples/array_error.mc
 ```
 
 The script runs each command on the same input and compares the exit status, standard output, and standard error.

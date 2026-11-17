@@ -15,6 +15,22 @@ def run_cli(*args):
 
 
 class CommandTests(unittest.TestCase):
+    def test_arrays_match_the_reference_at_each_compiler_stage(self):
+        for mode, suffix in (("ast", "ast"), ("resolve", "resolution"), ("bytecode", "bytecode"),
+                             ("bytecode-opt", "optimized.bytecode")):
+            with self.subTest(mode=mode):
+                expected = (ROOT / f"tests/fixtures/arrays.{suffix}").read_bytes()
+                self.assertEqual(run_cli("--" + mode, "examples/arrays.mc"), (0, expected, b""))
+        self.assertEqual(run_cli("--check", "examples/arrays.mc"), (0, b"", b""))
+
+    def test_array_execution_reports_uninitialized_elements_at_the_read(self):
+        path = "examples/array_error.mc"
+        diagnostic = b'examples/array_error.mc:5:10: error: The array element "values[1]" has no value.\n'
+        for mode in ("--run", "--run-vm", "--run-vm-opt"):
+            with self.subTest(mode=mode):
+                self.assertEqual(run_cli(mode, "examples/arrays.mc"), (0, b"10\n", b""))
+                self.assertEqual(run_cli(mode, path), (1, b"", diagnostic))
+
     def test_optimized_listing_and_execution_match_the_reference_example(self):
         path = "examples/optimization.mc"
         expected = (ROOT / "tests/fixtures/optimization.optimized.bytecode").read_bytes()

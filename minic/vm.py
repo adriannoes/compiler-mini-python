@@ -1,4 +1,4 @@
-"""Execute scalar Mini-C bytecode with an explicit stack of calls."""
+"""Execute Mini-C bytecode with an explicit stack of calls."""
 
 from dataclasses import dataclass, field
 from typing import Optional
@@ -8,9 +8,10 @@ from .bytecode import (
 )
 from .lexer import Token, TokenKind as Kind
 from .runtime import (
-    VOID, BoolValue, ExecutionError, ExecutionLimits, IntValue, Value, apply_binary, apply_unary,
+    VOID, ArrayStorage, BoolValue, ExecutionError, ExecutionLimits, IntValue, Storage, Value,
+    apply_binary, apply_unary,
 )
-from .type_checker import Type
+from .type_checker import MAX_ARRAY_LENGTH, Type
 
 
 def _index(operand: Optional[int], size: int, message: str) -> int:
@@ -30,7 +31,7 @@ def _require_type(value: Value, expected: Type) -> None:
 @dataclass
 class _Frame:
     function: BytecodeFunction
-    locals: list[Optional[Value]]
+    locals: list[Storage]
     stack: list[Value] = field(default_factory=list)
     pc: int = 0
 
@@ -42,8 +43,10 @@ class _Frame:
         start = len(caller_stack) - count
         if start < 0:
             raise InvalidBytecode("The call has insufficient argument values.")
-        slots: list[Optional[Value]] = [None] * len(function.locals)
+        slots: list[Storage] = [None] * len(function.locals)
         for index, argument in enumerate(caller_stack[start:]):
+            if function.locals[index].length is not None:
+                raise InvalidBytecode("Array parameters are not supported.")
             _require_type(argument, function.locals[index].type)
             slots[index] = argument
         del caller_stack[start:]
@@ -66,15 +69,43 @@ class _Frame:
         index = _index(instruction.operand, len(self.locals), "The local index is outside the function.")
         local = self.function.locals[index]
         if instruction.op is Op.RESET_LOCAL:
-            self.locals[index] = None
-        elif instruction.op is Op.STORE_LOCAL:
+            if local.length is None:
+                self.locals[index] = None
+            elif type(local.length) is int and 1 <= local.length <= MAX_ARRAY_LENGTH:
+                self.locals[index] = ArrayStorage([None] * local.length)
+            else:
+                raise InvalidBytecode("The array length is outside the supported range.")
+            return
+        if local.length is not None:
+            raise InvalidBytecode("A scalar instruction selected an array slot.")
+        if instruction.op is Op.STORE_LOCAL:
             value = self.top()
             _require_type(value, local.type)
             self.locals[index] = value
         else:
             value = self.locals[index]
+            assert not isinstance(value, ArrayStorage)
             if value is None:
                 raise ExecutionError(instruction.token, f'The variable "{local.name.text}" has no value.')
+            self.stack.append(value)
+
+    def element_instruction(self, instruction: Instruction) -> None:
+        slot = _index(instruction.operand, len(self.locals), "The local index is outside the function.")
+        local = self.function.locals[slot]
+        array = self.locals[slot]
+        if not isinstance(array, ArrayStorage) or len(array.elements) != local.length:
+            raise InvalidBytecode("The array slot has no active storage.")
+        if instruction.op is Op.STORE_ELEMENT:
+            value = self.pop()
+            _require_type(value, local.type)
+        index = self.top() if instruction.op is Op.CHECK_INDEX else self.pop()
+        if not isinstance(index, IntValue):
+            raise InvalidBytecode("An array index must be an integer.")
+        offset = array.offset(index, local.name.text, instruction.token)
+        if instruction.op is Op.LOAD_ELEMENT:
+            self.stack.append(array.load(offset, local.name.text, instruction.token))
+        elif instruction.op is Op.STORE_ELEMENT:
+            array.elements[offset] = value
             self.stack.append(value)
 
     def load_constant(self, instruction: Instruction) -> None:
@@ -130,6 +161,8 @@ def execute_bytecode(
             frame.load_constant(instruction)
         elif op in (Op.LOAD_LOCAL, Op.STORE_LOCAL, Op.RESET_LOCAL):
             frame.local_instruction(instruction)
+        elif op in (Op.CHECK_INDEX, Op.LOAD_ELEMENT, Op.STORE_ELEMENT):
+            frame.element_instruction(instruction)
         elif op is Op.POP:
             frame.pop()
         elif op in UNARY_KINDS:

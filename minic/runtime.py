@@ -1,8 +1,8 @@
-"""Scalar values and checked arithmetic for Mini-C execution."""
+"""Scalar values, array storage, and checked arithmetic for Mini-C execution."""
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union
+from typing import Optional, Union
 
 from .lexer import Token, TokenKind as Kind
 
@@ -40,6 +40,26 @@ class VoidValue(Enum):
 
 VOID = VoidValue.VOID
 Value = Union[IntValue, BoolValue, VoidValue]
+
+
+@dataclass
+class ArrayStorage:
+    elements: list[Optional[Value]]
+
+    def offset(self, index: IntValue, name: str, position: Token) -> int:
+        length = len(self.elements)
+        if not 0 <= index.value < length:
+            raise ExecutionError(position, f'The array index {index.value} is outside "{name}" with length {length}.')
+        return index.value
+
+    def load(self, offset: int, name: str, position: Token) -> Value:
+        value = self.elements[offset]
+        if value is None:
+            raise ExecutionError(position, f'The array element "{name}[{offset}]" has no value.')
+        return value
+
+
+Storage = Optional[Union[Value, ArrayStorage]]
 
 
 @dataclass(frozen=True)
