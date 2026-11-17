@@ -12,9 +12,10 @@ from .parser import ParseError, parse
 from .resolver import AnalysisError, format_resolution, resolve_names
 from .runtime import VOID, ExecutionError
 from .type_checker import check_types
+from .vm import execute_bytecode
 
 
-MODES = ("--tokens", "--ast", "--resolve", "--check", "--bytecode", "--run")
+MODES = ("--tokens", "--ast", "--resolve", "--check", "--bytecode", "--run", "--run-vm")
 
 
 def error(message: str) -> int:
@@ -59,7 +60,7 @@ def main(args: list[str]) -> int:
             elif args[0] == "--bytecode":
                 sys.stdout.buffer.write(format_bytecode(compile_bytecode(tree)).encode("ascii"))
             else:
-                value = interpret(tree)
+                value = interpret(tree) if args[0] == "--run" else execute_bytecode(compile_bytecode(tree))
                 if value is not VOID:
                     sys.stdout.buffer.write(f"{value}\n".encode("ascii"))
     except (LexError, ParseError, AnalysisError, ExecutionError) as exc:

@@ -24,7 +24,7 @@ def compare(commands, arguments, source=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("tokens", "ast", "resolve", "check", "bytecode", "run"))
+    parser.add_argument("mode", choices=("tokens", "ast", "resolve", "check", "bytecode", "run", "run-vm"))
     parser.add_argument("files", nargs="+", type=Path)
     parser.add_argument("--cpp", type=Path, default=ROOT.parent / "compiler-mini-c/build/minic")
     parser.add_argument("--rust", type=Path, default=ROOT.parent / "compiler-mini-rust/target/debug/compiler-mini-rust")
