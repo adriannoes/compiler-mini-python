@@ -2,7 +2,7 @@
 
 A control-flow graph connects instructions that can execute consecutively.
 A basic block is a sequence with one entry.
-Execution enters the first instruction and continues until a branch or terminal instruction.
+Execution enters the first instruction and continues until a branch, terminal instruction, or the next block entry.
 An edge connects one block to a possible successor.
 
 The [analysis module](../minic/control_flow.py) computes these blocks without executing the program.

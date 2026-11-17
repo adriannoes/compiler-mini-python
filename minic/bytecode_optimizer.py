@@ -7,6 +7,7 @@ from .bytecode import (
     BINARY_KINDS, UNARY_KINDS, BytecodeFunction, BytecodeProgram, Constant, Instruction,
     IntegerConstant, Op, constant_value,
 )
+from .bytecode_verifier import verify_bytecode
 from .runtime import BoolValue, ExecutionError, IntValue, Value, apply_binary, apply_unary
 
 
@@ -42,11 +43,21 @@ def _compact(edits: list[Optional[Instruction]]) -> list[Instruction]:
 
 def _fold(instruction: Instruction, known: list[_Known]) -> Optional[tuple[int, Value]]:
     op = instruction.op
+    # The verifier infers no operand types for dead blocks.
     try:
         if op in UNARY_KINDS and known:
+            expected = BoolValue if op is Op.NOT else IntValue
+            if not isinstance(known[-1].value, expected):
+                return None
             return 1, apply_unary(UNARY_KINDS[op], known[-1].value, instruction.token)
         if op in BINARY_KINDS and len(known) >= 2:
-            return 2, apply_binary(BINARY_KINDS[op], known[-2].value, known[-1].value, instruction.token)
+            left, right = known[-2].value, known[-1].value
+            if op in (Op.EQUAL, Op.NOT_EQUAL):
+                if type(left) is not type(right):
+                    return None
+            elif not isinstance(left, IntValue) or not isinstance(right, IntValue):
+                return None
+            return 2, apply_binary(BINARY_KINDS[op], left, right, instruction.token)
     except ExecutionError:
         # Leave the operation in place so the VM can report the error if it reaches it.
         return None
@@ -120,8 +131,10 @@ def _thread_jumps(code: list[Instruction]) -> bool:
     for i, instruction in enumerate(code):
         if instruction.op in _JUMPS:
             target = _operand(instruction)
-            # Every loop in compiler-produced bytecode has a STEP before its back edge repeats.
-            while code[target].op is Op.JUMP and code[target].operand != target:
+            visited = set()
+            # Folding can remove a dead target at the end before dead-code removal.
+            while 0 <= target < len(code) and code[target].op is Op.JUMP and target not in visited:
+                visited.add(target)
                 target = _operand(code[target])
             if target != instruction.operand:
                 code[i] = replace(instruction, operand=target)
@@ -161,4 +174,7 @@ def _optimize_function(original: BytecodeFunction) -> BytecodeFunction:
 
 def optimize_bytecode(program: BytecodeProgram) -> BytecodeProgram:
     """Return a separate program with optimized instructions for every function."""
-    return BytecodeProgram(tuple(_optimize_function(function) for function in program.functions))
+    verify_bytecode(program)
+    optimized = BytecodeProgram(tuple(_optimize_function(function) for function in program.functions))
+    verify_bytecode(optimized)
+    return optimized

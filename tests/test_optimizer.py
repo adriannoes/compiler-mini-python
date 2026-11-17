@@ -1,6 +1,9 @@
 import unittest
+import subprocess
+import sys
+from pathlib import Path
 
-from minic.bytecode import IntegerConstant, Op, format_bytecode
+from minic.bytecode import Instruction, IntegerConstant, Op, format_bytecode
 from minic.bytecode_compiler import compile_bytecode
 from minic.bytecode_optimizer import optimize_bytecode
 from minic.lexer import lex
@@ -14,6 +17,58 @@ def compile_source(source):
 
 
 class OptimizerTests(unittest.TestCase):
+    def test_dead_operands_need_no_invented_stack_types(self):
+        for op in (Op.NEGATE, Op.NOT, Op.ADD, Op.LESS, Op.EQUAL):
+            with self.subTest(op=op):
+                code = compile_source("int main(){return 1;}")
+                function = code.functions[0]
+                function.constants.append(True)
+                token = function.name
+                first, second = (0, 1) if op is Op.NEGATE else (1, 0)
+                function.code.extend([
+                    Instruction(Op.LOAD_CONSTANT, token, first),
+                    Instruction(Op.LOAD_CONSTANT, token, second),
+                    Instruction(op, token),
+                    Instruction(Op.POP, token),
+                ])
+                optimized = optimize_bytecode(code)
+                self.assertEqual(execute_bytecode(optimized), IntValue(1))
+
+    def test_deleted_dead_target_does_not_escape_jump_threading(self):
+        code = compile_source("int main(){return 1;}")
+        function = code.functions[0]
+        start = len(function.code)
+        token = function.name
+        function.code.extend([
+            Instruction(Op.JUMP, token, start + 2), Instruction(Op.POP, token),
+            Instruction(Op.LOAD_CONSTANT, token, 0), Instruction(Op.POP, token),
+        ])
+        optimized = optimize_bytecode(code)
+        self.assertEqual(execute_bytecode(optimized), IntValue(1))
+        self.assertEqual(len(optimized.functions[0].code), start - 1)
+
+    def test_dead_jump_cycles_finish_and_leave_the_input_unchanged(self):
+        script = """
+from minic.bytecode import Instruction, Op, format_bytecode
+from minic.bytecode_compiler import compile_bytecode
+from minic.bytecode_optimizer import optimize_bytecode
+from minic.lexer import lex
+from minic.parser import parse
+program = compile_bytecode(parse(lex(b'void main(){}')))
+function = program.functions[0]
+start = len(function.code)
+function.code.extend([Instruction(Op.JUMP, function.name, start + 1),
+                      Instruction(Op.JUMP, function.name, start)])
+before = format_bytecode(program)
+optimized = optimize_bytecode(program)
+assert len(optimized.functions[0].code) == start
+assert format_bytecode(program) == before
+print('ok')
+"""
+        result = subprocess.run([sys.executable, "-c", script], capture_output=True, timeout=5,
+                                cwd=Path(__file__).resolve().parents[1])
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (0, b"ok\n", b""))
+
     def test_optimization_preserves_original_digits_and_each_named_entry(self):
         original = compile_source("int f(){int x=0007/-2;return x;} bool g(){return !(2<3);}")
         before = format_bytecode(original)
