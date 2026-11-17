@@ -4,18 +4,13 @@ from dataclasses import replace
 from typing import Iterator, Optional, Union
 
 from . import ast
-from .bytecode import BytecodeFunction, BytecodeProgram, Constant, Instruction, IntegerConstant, Local, Op
+from .bytecode import (
+    BINARY_OPS, BytecodeFunction, BytecodeProgram, Constant, Instruction, IntegerConstant, Local, Op,
+)
 from .lexer import Token, TokenKind as Kind
 from .type_checker import Type, TypeAnalysis, check_types
 
 
-_BINARY = {
-    Kind.PLUS: Op.ADD, Kind.MINUS: Op.SUBTRACT, Kind.STAR: Op.MULTIPLY,
-    Kind.SLASH: Op.DIVIDE, Kind.PERCENT: Op.REMAINDER,
-    Kind.EQUAL_EQUAL: Op.EQUAL, Kind.BANG_EQUAL: Op.NOT_EQUAL,
-    Kind.LESS: Op.LESS, Kind.LESS_EQUAL: Op.LESS_EQUAL,
-    Kind.GREATER: Op.GREATER, Kind.GREATER_EQUAL: Op.GREATER_EQUAL,
-}
 _Node = Union[ast.Stmt, ast.Expr]
 _LocalDeclaration = Union[ast.Variable, ast.Parameter]
 
@@ -133,7 +128,7 @@ class _Compiler:
                 self.patch_jump(end)
             else:
                 yield expr.right
-                self.emit(_BINARY[token.kind], token)
+                self.emit(BINARY_OPS[token.kind], token)
         else:
             raise TypeError(f"Unknown expression: {type(expr).__name__}.")
 

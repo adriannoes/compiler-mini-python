@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Optional, Union
 
-from .lexer import Token
+from .lexer import Token, TokenKind as Kind
 from .type_checker import Type
 
 
@@ -35,6 +35,15 @@ class Op(Enum):
     RETURN = auto()
     RETURN_VOID = auto()
     UNREACHABLE = auto()
+
+
+BINARY_OPS = {
+    Kind.PLUS: Op.ADD, Kind.MINUS: Op.SUBTRACT, Kind.STAR: Op.MULTIPLY,
+    Kind.SLASH: Op.DIVIDE, Kind.PERCENT: Op.REMAINDER,
+    Kind.EQUAL_EQUAL: Op.EQUAL, Kind.BANG_EQUAL: Op.NOT_EQUAL,
+    Kind.LESS: Op.LESS, Kind.LESS_EQUAL: Op.LESS_EQUAL,
+    Kind.GREATER: Op.GREATER, Kind.GREATER_EQUAL: Op.GREATER_EQUAL,
+}
 
 
 @dataclass(frozen=True)
