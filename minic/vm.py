@@ -6,6 +6,7 @@ from typing import Optional
 from .bytecode import (
     BINARY_KINDS, UNARY_KINDS, BytecodeFunction, BytecodeProgram, Instruction, InvalidBytecode, Op, constant_value,
 )
+from .bytecode_verifier import verify_bytecode
 from .lexer import Token, TokenKind as Kind
 from .runtime import (
     VOID, ArrayStorage, BoolValue, ExecutionError, ExecutionLimits, IntValue, Storage, Value,
@@ -138,6 +139,7 @@ class _Frame:
 def execute_bytecode(
     program: BytecodeProgram, entry: str = "main", limits: ExecutionLimits = ExecutionLimits()
 ) -> Value:
+    verify_bytecode(program)
     function = next((fn for fn in program.functions if fn.name.text == entry), None)
     if function is None:
         raise ExecutionError(Token(Kind.EOF, "", 1, 1), f'The entry function "{entry}" does not exist.')

@@ -101,4 +101,4 @@ class VmTests(unittest.TestCase):
                 instructions[0] = replace(instructions[0], op=op, operand=operand)
                 with self.assertRaises(InvalidBytecode) as caught:
                     execute_bytecode(code)
-                self.assertEqual(str(caught.exception), f"Invalid bytecode: {reason}")
+                self.assertEqual(str(caught.exception), f"Invalid bytecode: f at instruction 0: {reason}")
