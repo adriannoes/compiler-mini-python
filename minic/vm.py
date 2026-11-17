@@ -1,0 +1,177 @@
+"""Execute scalar Mini-C bytecode with an explicit stack of calls."""
+
+from dataclasses import dataclass, field
+from typing import Optional
+
+from .bytecode import BINARY_OPS, BytecodeFunction, BytecodeProgram, Instruction, IntegerConstant, Op
+from .lexer import Token, TokenKind as Kind
+from .runtime import (
+    VOID, BoolValue, ExecutionError, ExecutionLimits, IntValue, Value, apply_binary, apply_unary, integer_literal,
+)
+from .type_checker import Type
+
+
+_BINARY_KINDS = {op: kind for kind, op in BINARY_OPS.items()}
+
+
+class InvalidBytecode(ValueError):
+    def __init__(self, message: str):
+        super().__init__(f"Invalid bytecode: {message}")
+
+
+def _index(operand: Optional[int], size: int, message: str) -> int:
+    if type(operand) is not int or not 0 <= operand < size:
+        raise InvalidBytecode(message)
+    return operand
+
+
+def _require_type(value: Value, expected: Type) -> None:
+    if expected is Type.INT and isinstance(value, IntValue):
+        return
+    if expected is Type.BOOL and isinstance(value, BoolValue):
+        return
+    raise InvalidBytecode("The operand type does not match the instruction.")
+
+
+@dataclass
+class _Frame:
+    function: BytecodeFunction
+    locals: list[Optional[Value]]
+    stack: list[Value] = field(default_factory=list)
+    pc: int = 0
+
+    @classmethod
+    def enter(cls, function: BytecodeFunction, caller_stack: list[Value]) -> "_Frame":
+        count = function.parameter_count
+        if type(count) is not int or not 0 <= count <= len(function.locals):
+            raise InvalidBytecode("The function has insufficient parameter slots.")
+        start = len(caller_stack) - count
+        if start < 0:
+            raise InvalidBytecode("The call has insufficient argument values.")
+        slots: list[Optional[Value]] = [None] * len(function.locals)
+        for index, argument in enumerate(caller_stack[start:]):
+            _require_type(argument, function.locals[index].type)
+            slots[index] = argument
+        del caller_stack[start:]
+        return cls(function, slots)
+
+    def top(self) -> Value:
+        if not self.stack:
+            raise InvalidBytecode("The instruction underflows the value stack.")
+        return self.stack[-1]
+
+    def pop(self) -> Value:
+        if not self.stack:
+            raise InvalidBytecode("The instruction underflows the value stack.")
+        return self.stack.pop()
+
+    def jump(self, target: Optional[int]) -> None:
+        self.pc = _index(target, len(self.function.code), "The jump target is outside the function.")
+
+    def local_instruction(self, instruction: Instruction) -> None:
+        index = _index(instruction.operand, len(self.locals), "The local index is outside the function.")
+        local = self.function.locals[index]
+        if instruction.op is Op.RESET_LOCAL:
+            self.locals[index] = None
+        elif instruction.op is Op.STORE_LOCAL:
+            value = self.top()
+            _require_type(value, local.type)
+            self.locals[index] = value
+        else:
+            value = self.locals[index]
+            if value is None:
+                raise ExecutionError(instruction.token, f'The variable "{local.name.text}" has no value.')
+            self.stack.append(value)
+
+    def load_constant(self, instruction: Instruction) -> None:
+        constants = self.function.constants
+        index = _index(instruction.operand, len(constants), "The constant index is outside the function.")
+        constant = constants[index]
+        if isinstance(constant, IntegerConstant):
+            self.stack.append(integer_literal(constant.digits, constant.negative, instruction.token))
+        elif isinstance(constant, bool):
+            self.stack.append(BoolValue(constant))
+        else:
+            raise InvalidBytecode("The constant must be an integer or a boolean.")
+
+    def apply_binary(self, instruction: Instruction) -> None:
+        right = self.pop()
+        left = self.pop()
+        equality = instruction.op in (Op.EQUAL, Op.NOT_EQUAL)
+        expected = Type.BOOL if equality and isinstance(right, BoolValue) else Type.INT
+        _require_type(left, expected)
+        _require_type(right, expected)
+        self.stack.append(apply_binary(_BINARY_KINDS[instruction.op], left, right, instruction.token))
+
+    def finish(self, op: Op) -> Value:
+        if op is Op.RETURN:
+            result = self.pop()
+            _require_type(result, self.function.result)
+        else:
+            if self.function.result is not Type.VOID:
+                raise InvalidBytecode("A non-void function returned no value.")
+            result = VOID
+        if self.stack:
+            raise InvalidBytecode("A return left temporary values on the stack.")
+        return result
+
+
+def execute_bytecode(
+    program: BytecodeProgram, entry: str = "main", limits: ExecutionLimits = ExecutionLimits()
+) -> Value:
+    function = next((fn for fn in program.functions if fn.name.text == entry), None)
+    if function is None:
+        raise ExecutionError(Token(Kind.EOF, "", 1, 1), f'The entry function "{entry}" does not exist.')
+    if function.parameter_count:
+        raise ExecutionError(function.name, f'The entry function "{entry}" must not have parameters.')
+    frames = [_Frame.enter(function, [])]
+    remaining = limits.max_steps
+    while True:
+        frame = frames[-1]
+        if frame.pc >= len(frame.function.code):
+            raise InvalidBytecode("Control flow left the instruction vector.")
+        instruction = frame.function.code[frame.pc]
+        frame.pc += 1
+        op = instruction.op
+        token = instruction.token
+        if op is Op.STEP:
+            if remaining == 0:
+                raise ExecutionError(token, "The execution step limit was reached.")
+            remaining -= 1
+        elif op is Op.LOAD_CONSTANT:
+            frame.load_constant(instruction)
+        elif op in (Op.LOAD_LOCAL, Op.STORE_LOCAL, Op.RESET_LOCAL):
+            frame.local_instruction(instruction)
+        elif op is Op.POP:
+            frame.pop()
+        elif op in (Op.NEGATE, Op.NOT):
+            value = frame.pop()
+            _require_type(value, Type.INT if op is Op.NEGATE else Type.BOOL)
+            kind = Kind.MINUS if op is Op.NEGATE else Kind.BANG
+            frame.stack.append(apply_unary(kind, value, token))
+        elif op in _BINARY_KINDS:
+            frame.apply_binary(instruction)
+        elif op is Op.JUMP:
+            frame.jump(instruction.operand)
+        elif op in (Op.JUMP_IF_FALSE, Op.JUMP_IF_TRUE):
+            condition = frame.pop()
+            if not isinstance(condition, BoolValue):
+                raise InvalidBytecode("The operand type does not match the instruction.")
+            if condition.value == (op is Op.JUMP_IF_TRUE):
+                frame.jump(instruction.operand)
+        elif op is Op.CALL:
+            index = _index(instruction.operand, len(program.functions), "The function index is outside the program.")
+            if len(frames) >= limits.max_call_depth:
+                raise ExecutionError(token, "The call depth limit was reached.")
+            frames.append(_Frame.enter(program.functions[index], frame.stack))
+        elif op in (Op.RETURN, Op.RETURN_VOID):
+            result = frame.finish(op)
+            frames.pop()
+            if not frames:
+                return result
+            if result is not VOID:
+                frames[-1].stack.append(result)
+        elif op is Op.UNREACHABLE:
+            raise InvalidBytecode("A typed function ended without a return value.")
+        else:
+            raise InvalidBytecode("The opcode does not exist.")

@@ -35,14 +35,17 @@ class CommandTests(unittest.TestCase):
             ("examples/fibonacci.mc", b"55\n"), ("examples/short_circuit.mc", b"true\n"),
             ("tests/fixtures/void_main.mc", b""),
         ]:
-            with self.subTest(path=path):
-                self.assertEqual(run_cli("--run", path), (0, expected, b""))
+            for mode in ("--run", "--run-vm"):
+                with self.subTest(path=path, mode=mode):
+                    self.assertEqual(run_cli(mode, path), (0, expected, b""))
 
     def test_run_reports_the_first_execution_error_without_a_result(self):
         path = "examples/runtime_error.mc"
         self.assertEqual(run_cli("--check", path), (0, b"", b""))
         diagnostic = b'examples/runtime_error.mc:3:15: error: The variable "value" has no value.\n'
-        self.assertEqual(run_cli("--run", path), (1, b"", diagnostic))
+        for mode in ("--run", "--run-vm"):
+            with self.subTest(mode=mode):
+                self.assertEqual(run_cli(mode, path), (1, b"", diagnostic))
 
     def test_resolution_matches_the_reference_scopes_and_recursion(self):
         for name in ("scopes", "recursion"):
@@ -108,7 +111,7 @@ class CommandTests(unittest.TestCase):
         )
 
     def test_missing_file_argument(self):
-        for mode in ("--tokens", "--ast", "--resolve", "--check", "--bytecode", "--run"):
+        for mode in ("--tokens", "--ast", "--resolve", "--check", "--bytecode", "--run", "--run-vm"):
             with self.subTest(mode=mode):
                 expected = f"minic: error: Expected {mode} <file>. Use --help for usage.\n"
                 self.assertEqual(run_cli(mode), (1, b"", expected.encode("ascii")))
@@ -116,7 +119,8 @@ class CommandTests(unittest.TestCase):
     def test_help_shows_the_module_command(self):
         expected = (b"Usage: python3 -m minic --tokens <file>\n       python3 -m minic --ast <file>\n"
                     b"       python3 -m minic --resolve <file>\n       python3 -m minic --check <file>\n"
-                    b"       python3 -m minic --bytecode <file>\n       python3 -m minic --run <file>\n")
+                    b"       python3 -m minic --bytecode <file>\n       python3 -m minic --run <file>\n"
+                    b"       python3 -m minic --run-vm <file>\n")
         for flag in ("-h", "--help"):
             with self.subTest(flag=flag):
                 self.assertEqual(run_cli(flag), (0, expected, b""))

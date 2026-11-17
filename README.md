@@ -200,6 +200,32 @@ The [Python compiler](minic/bytecode_compiler.py) uses the declaration object it
 Two variables with the same name in different scopes get separate slots. Parameters take the first slots in declaration order.
 Each call identifies its function by source order, so the compiler can emit a call before it compiles the callee.
 
+## Execute the bytecode
+
+From the repository root, run the factorial example on both engines.
+
+```sh
+python3 -m minic --run examples/factorial.mc
+python3 -m minic --run-vm examples/factorial.mc
+```
+
+Both commands print `720`. The interpreter visits syntax tree nodes. The [virtual machine](minic/vm.py) reads one bytecode instruction at a time.
+The program counter holds the offset of the next instruction in the current function.
+
+In `n * factorial(n - 1)`, the caller pushes `n` onto its operand stack and computes the argument above it.
+`CALL` moves the argument into the new frame's first local slot. The caller keeps `n` on its stack.
+`RETURN` gives the caller the factorial of `n - 1`. The caller resumes at `MULTIPLY`.
+A void return resumes the caller with its stack unchanged.
+
+The C++ and Rust VMs keep operands in one shared stack and record its base offset in each frame.
+Python allocates one operand list per frame. This costs one list per active call and keeps each caller's pending operands in its own frame.
+All three VMs use an explicit stack of frames for recursion.
+
+Only `STEP` consumes a source step. Calls share the step budget, and skipped instructions consume no steps.
+Both Python engines use the same checked arithmetic and report errors at the source position of the operation.
+The library can execute the same bytecode several times with different entry functions or limits through `execute_bytecode(program, entry, limits)`.
+Each execution starts with fresh frames and a fresh step budget.
+
 ## Tests
 
 From the repository root, run the tests with the Python standard library.
@@ -216,6 +242,7 @@ With both reference executables available, compare the three implementations fro
 ```sh
 python3 scripts/compare_cli.py run examples/factorial.mc examples/runtime_error.mc
 python3 scripts/compare_cli.py bytecode examples/short_circuit.mc examples/type_error.mc
+python3 scripts/compare_cli.py run-vm examples/factorial.mc examples/runtime_error.mc
 ```
 
 The script runs each command on the same input and compares the exit status, standard output, and standard error.

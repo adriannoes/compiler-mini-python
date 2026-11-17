@@ -70,15 +70,22 @@ def _checked(value: int, token: Token) -> IntValue:
 
 
 def unary(operator: Token, operand: Value) -> Value:
-    if operator.kind is Kind.MINUS and isinstance(operand, IntValue):
-        return _checked(-operand.value, operator)
-    if operator.kind is Kind.BANG and isinstance(operand, BoolValue):
+    return apply_unary(operator.kind, operand, operator)
+
+
+def apply_unary(kind: Kind, operand: Value, position: Token) -> Value:
+    if kind is Kind.MINUS and isinstance(operand, IntValue):
+        return _checked(-operand.value, position)
+    if kind is Kind.BANG and isinstance(operand, BoolValue):
         return BoolValue(not operand.value)
     raise AssertionError("Invalid operands for a checked unary expression.")
 
 
 def binary(operator: Token, left: Value, right: Value) -> Value:
-    kind = operator.kind
+    return apply_binary(operator.kind, left, right, operator)
+
+
+def apply_binary(kind: Kind, left: Value, right: Value, position: Token) -> Value:
     if kind is Kind.EQUAL_EQUAL:
         return BoolValue(left == right)
     if kind is Kind.BANG_EQUAL:
@@ -92,19 +99,19 @@ def binary(operator: Token, left: Value, right: Value) -> Value:
     assert isinstance(left, IntValue) and isinstance(right, IntValue)
     a, b = left.value, right.value
     if kind is Kind.PLUS:
-        return _checked(a + b, operator)
+        return _checked(a + b, position)
     if kind is Kind.MINUS:
-        return _checked(a - b, operator)
+        return _checked(a - b, position)
     if kind is Kind.STAR:
-        return _checked(a * b, operator)
+        return _checked(a * b, position)
     if kind in (Kind.SLASH, Kind.PERCENT):
         if b == 0:
-            raise ExecutionError(operator, "The divisor is zero.")
+            raise ExecutionError(position, "The divisor is zero.")
         quotient = abs(a) // abs(b)
         if (a < 0) != (b < 0):
             quotient = -quotient
         # Both division and remainder require a representable quotient.
-        result = _checked(quotient, operator)
+        result = _checked(quotient, position)
         return result if kind is Kind.SLASH else IntValue(a - quotient * b)
     if kind is Kind.LESS:
         return BoolValue(a < b)
