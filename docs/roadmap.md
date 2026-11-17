@@ -38,20 +38,20 @@ The command tests compare standard output, standard error, and exit status.
 The C++ roadmap separates name resolution from type checking and adds a separate parsing theory phase.
 Rust combines bytecode compilation with VM execution, then combines optimization with arrays.
 The following mapping follows the observable deliveries in both histories.
-[C++ roadmap](../../compiler-mini-c/docs/roadmap.md), [Rust roadmap](../../compiler-mini-rust/docs/roadmap.md).
+[C++ roadmap](https://github.com/adriannoes/compiler-mini-c/blob/main/docs/roadmap.md), [Rust roadmap](https://github.com/adriannoes/compiler-mini-rust/blob/main/docs/roadmap.md).
 
 | Python phase | C++ phase and source reference | Rust phase and source reference |
 |---|---|---|
-| 1 | Phase 1, [lexer.cpp](../../compiler-mini-c/src/lexer.cpp) | Phase 1, [lexer.rs](../../compiler-mini-rust/src/lexer.rs) |
-| 2 | Phase 1, [lexer.cpp](../../compiler-mini-c/src/lexer.cpp) | Phase 2, [lexer.rs](../../compiler-mini-rust/src/lexer.rs) |
-| 3 | Phase 2, [parser.cpp](../../compiler-mini-c/src/parser.cpp) | Phase 3, [parser.rs](../../compiler-mini-rust/src/parser.rs) |
-| 4 | Phases 4 and 5, [name_resolution.cpp](../../compiler-mini-c/src/name_resolution.cpp) and [type_checker.cpp](../../compiler-mini-c/src/type_checker.cpp) | Phase 4, [resolver.rs](../../compiler-mini-rust/src/resolver.rs) and [type_checker.rs](../../compiler-mini-rust/src/type_checker.rs) |
-| 5 | Phases 6 and 7, [interpreter.cpp](../../compiler-mini-c/src/interpreter.cpp) and [runtime.cpp](../../compiler-mini-c/src/runtime.cpp) | Phase 5, [interpreter.rs](../../compiler-mini-rust/src/interpreter.rs) and [runtime.rs](../../compiler-mini-rust/src/runtime.rs) |
-| 6 | Phase 8, [bytecode_compiler.cpp](../../compiler-mini-c/src/bytecode_compiler.cpp) | Phase 6, [bytecode_compiler.rs](../../compiler-mini-rust/src/bytecode_compiler.rs) |
-| 7 | Phase 9, [vm.cpp](../../compiler-mini-c/src/vm.cpp) | Phase 6, [vm.rs](../../compiler-mini-rust/src/vm.rs) |
-| 8 | Phase 10, [bytecode_optimizer.cpp](../../compiler-mini-c/src/bytecode_optimizer.cpp) | Phase 7, [bytecode_optimizer.rs](../../compiler-mini-rust/src/bytecode_optimizer.rs) |
-| 9 | Phase 11, [arrays_frontend_test.cpp](../../compiler-mini-c/tests/arrays_frontend_test.cpp) and [arrays_runtime_test.cpp](../../compiler-mini-c/tests/arrays_runtime_test.cpp) | Phase 7, [type_checker.rs](../../compiler-mini-rust/src/type_checker.rs) and [vm.rs](../../compiler-mini-rust/src/vm.rs) |
-| 10 | Phase 13, [architecture.md](../../compiler-mini-c/docs/architecture.md) and [language.md](../../compiler-mini-c/docs/language.md) | Phase 8, [language.md](../../compiler-mini-rust/docs/language.md) and [compare_cli.py](../../compiler-mini-rust/scripts/reference/compare_cli.py) |
+| 1 | Phase 1, [lexer.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/lexer.cpp) | Phase 1, [lexer.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/lexer.rs) |
+| 2 | Phase 1, [lexer.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/lexer.cpp) | Phase 2, [lexer.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/lexer.rs) |
+| 3 | Phase 2, [parser.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/parser.cpp) | Phase 3, [parser.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/parser.rs) |
+| 4 | Phases 4 and 5, [name_resolution.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/name_resolution.cpp) and [type_checker.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/type_checker.cpp) | Phase 4, [resolver.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/resolver.rs) and [type_checker.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/type_checker.rs) |
+| 5 | Phases 6 and 7, [interpreter.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/interpreter.cpp) and [runtime.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/runtime.cpp) | Phase 5, [interpreter.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/interpreter.rs) and [runtime.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/runtime.rs) |
+| 6 | Phase 8, [bytecode_compiler.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/bytecode_compiler.cpp) | Phase 6, [bytecode_compiler.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/bytecode_compiler.rs) |
+| 7 | Phase 9, [vm.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/vm.cpp) | Phase 6, [vm.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/vm.rs) |
+| 8 | Phase 10, [bytecode_optimizer.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/src/bytecode_optimizer.cpp) | Phase 7, [bytecode_optimizer.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/bytecode_optimizer.rs) |
+| 9 | Phase 11, [arrays_frontend_test.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/tests/arrays_frontend_test.cpp) and [arrays_runtime_test.cpp](https://github.com/adriannoes/compiler-mini-c/blob/main/tests/arrays_runtime_test.cpp) | Phase 7, [type_checker.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/type_checker.rs) and [vm.rs](https://github.com/adriannoes/compiler-mini-rust/blob/main/src/vm.rs) |
+| 10 | Phase 13, [architecture.md](https://github.com/adriannoes/compiler-mini-c/blob/main/docs/architecture.md) and [language.md](https://github.com/adriannoes/compiler-mini-c/blob/main/docs/language.md) | Phase 8, [language.md](https://github.com/adriannoes/compiler-mini-rust/blob/main/docs/language.md) and [compare_cli.py](https://github.com/adriannoes/compiler-mini-rust/blob/main/scripts/reference/compare_cli.py) |
 
 Python introduced bracket tokens in phase 2 and array syntax in phase 9.
 C++ introduced bracket tokens with arrays in phase 11. Token recognition and syntactic support can therefore land in different phases.
@@ -72,7 +72,8 @@ These commits identify executable milestones in each repository. Later commits e
 | Optimized commands | `60ea28c` | `a5bbd5a` | `80ddd78` |
 | Arrays across stages | `df3dd18` | `dc2feab` | `bf68976` |
 
-From the Python repository root, read the ordered implementation commits and inspect the first lexer increment.
+From the Python repository root, read the implementation commits in development order.
+Then inspect the first lexer increment.
 
 ```sh
 git log --reverse --oneline -- minic
