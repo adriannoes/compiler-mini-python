@@ -4,6 +4,8 @@ import os
 import sys
 
 from .ast_printer import format_ast
+from .bytecode import format_bytecode
+from .bytecode_compiler import compile_bytecode
 from .interpreter import interpret
 from .lexer import LexError, lex
 from .parser import ParseError, parse
@@ -12,7 +14,7 @@ from .runtime import VOID, ExecutionError
 from .type_checker import check_types
 
 
-MODES = ("--tokens", "--ast", "--resolve", "--check", "--run")
+MODES = ("--tokens", "--ast", "--resolve", "--check", "--bytecode", "--run")
 
 
 def error(message: str) -> int:
@@ -54,6 +56,8 @@ def main(args: list[str]) -> int:
                 sys.stdout.buffer.write(format_resolution(resolve_names(tree)).encode("ascii"))
             elif args[0] == "--check":
                 check_types(tree)
+            elif args[0] == "--bytecode":
+                sys.stdout.buffer.write(format_bytecode(compile_bytecode(tree)).encode("ascii"))
             else:
                 value = interpret(tree)
                 if value is not VOID:

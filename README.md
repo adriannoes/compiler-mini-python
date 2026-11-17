@@ -158,6 +158,48 @@ Each executed statement or expression costs one step. Skipped operands cost no s
 The interpreter evaluates arguments left to right before it tests the call depth.
 The library accepts another entry name and custom limits through `interpret(program, entry, limits)` and `ExecutionLimits(max_steps, max_call_depth)`.
 
+## Read the bytecode
+
+Bytecode is a sequence of instructions for a virtual machine. From the repository root, compile the example and print its instructions.
+
+```sh
+python3 -m minic --bytecode examples/hello.mc
+```
+
+```text
+bytecode
+function 0 "main" int parameters=0 @3:5
+  constant 0 int "0"
+  0 STEP @3:12
+  1 STEP @4:3
+  2 STEP @4:10
+  3 LOAD_CONSTANT 0 @4:10
+  4 RETURN @4:3
+  5 UNREACHABLE @3:12
+end
+```
+
+The three `STEP` instructions mark the block, the return statement, and the literal. Each carries its source position.
+`LOAD_CONSTANT 0` pushes the first constant onto the operand stack. `RETURN` takes that value off the stack and returns it to the caller.
+`UNREACHABLE` marks the end of a non-void function. The type checker requires every path to return before that point.
+
+The compiler checks the whole program before it emits instructions. Compilation accepts functions without a `main` and preserves the digits of integer literals.
+A program such as [runtime_error.mc](examples/runtime_error.mc) produces a listing. The read of an uninitialized variable fails only during execution.
+
+From the repository root, inspect a conditional jump.
+
+```sh
+python3 -m minic --bytecode examples/short_circuit.mc
+```
+
+At offset 23, `JUMP_IF_TRUE 35` consumes the left operand of `||`. When that operand is true, the jump skips `DIVIDE` at offset 30.
+At offset 35, `LOAD_CONSTANT 8` supplies the result, `true`. Jump targets count instructions from zero within each function.
+
+C++ looks up a symbol by declaration address. C++ and Rust use the symbol identifier to select a numbered slot.
+The [Python compiler](minic/bytecode_compiler.py) uses the declaration object itself as the slot table key.
+Two variables with the same name in different scopes get separate slots. Parameters take the first slots in declaration order.
+Each call identifies its function by source order, so the compiler can emit a call before it compiles the callee.
+
 ## Tests
 
 From the repository root, run the tests with the Python standard library.
@@ -167,12 +209,13 @@ python3 -m unittest discover -s tests
 ```
 
 The command tests compare the exit status and the bytes on both output streams.
-The [expected token listings, syntax trees, and name bindings](tests/fixtures) come from the C++ compiler.
+The [expected token listings, syntax trees, name bindings, and bytecode listings](tests/fixtures) come from the C++ compiler.
 
 With both reference executables available, compare the three implementations from the repository root.
 
 ```sh
 python3 scripts/compare_cli.py run examples/factorial.mc examples/runtime_error.mc
+python3 scripts/compare_cli.py bytecode examples/short_circuit.mc examples/type_error.mc
 ```
 
 The script runs each command on the same input and compares the exit status, standard output, and standard error.

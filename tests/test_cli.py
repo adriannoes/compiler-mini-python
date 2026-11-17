@@ -15,6 +15,20 @@ def run_cli(*args):
 
 
 class CommandTests(unittest.TestCase):
+    def test_bytecode_matches_the_reference_instructions_and_positions(self):
+        for name in ("hello", "short_circuit"):
+            with self.subTest(name=name):
+                expected = (ROOT / f"tests/fixtures/{name}.bytecode").read_bytes()
+                self.assertEqual(run_cli("--bytecode", f"examples/{name}.mc"), (0, expected, b""))
+
+    def test_bytecode_checks_the_whole_source_before_it_prints(self):
+        for path in ("examples/expressions.mc", "examples/type_error.mc",
+                     "tests/fixtures/syntax_error.mc", "tests/fixtures/lex_before_syntax.mc"):
+            with self.subTest(path=path):
+                expected = run_cli("--check", path)
+                self.assertEqual(expected[:2], (1, b""))
+                self.assertEqual(run_cli("--bytecode", path), expected)
+
     def test_run_prints_the_entry_result_and_exits_successfully(self):
         for path, expected in [
             ("examples/interpreter.mc", b"42\n"), ("examples/factorial.mc", b"720\n"),
@@ -94,7 +108,7 @@ class CommandTests(unittest.TestCase):
         )
 
     def test_missing_file_argument(self):
-        for mode in ("--tokens", "--ast", "--resolve", "--check", "--run"):
+        for mode in ("--tokens", "--ast", "--resolve", "--check", "--bytecode", "--run"):
             with self.subTest(mode=mode):
                 expected = f"minic: error: Expected {mode} <file>. Use --help for usage.\n"
                 self.assertEqual(run_cli(mode), (1, b"", expected.encode("ascii")))
@@ -102,7 +116,7 @@ class CommandTests(unittest.TestCase):
     def test_help_shows_the_module_command(self):
         expected = (b"Usage: python3 -m minic --tokens <file>\n       python3 -m minic --ast <file>\n"
                     b"       python3 -m minic --resolve <file>\n       python3 -m minic --check <file>\n"
-                    b"       python3 -m minic --run <file>\n")
+                    b"       python3 -m minic --bytecode <file>\n       python3 -m minic --run <file>\n")
         for flag in ("-h", "--help"):
             with self.subTest(flag=flag):
                 self.assertEqual(run_cli(flag), (0, expected, b""))
