@@ -4,13 +4,15 @@ import os
 import sys
 
 from .ast_printer import format_ast
+from .interpreter import interpret
 from .lexer import LexError, lex
 from .parser import ParseError, parse
 from .resolver import AnalysisError, format_resolution, resolve_names
+from .runtime import VOID, ExecutionError
 from .type_checker import check_types
 
 
-MODES = ("--tokens", "--ast", "--resolve", "--check")
+MODES = ("--tokens", "--ast", "--resolve", "--check", "--run")
 
 
 def error(message: str) -> int:
@@ -50,9 +52,13 @@ def main(args: list[str]) -> int:
                 sys.stdout.buffer.write(format_ast(tree).encode("ascii"))
             elif args[0] == "--resolve":
                 sys.stdout.buffer.write(format_resolution(resolve_names(tree)).encode("ascii"))
-            else:
+            elif args[0] == "--check":
                 check_types(tree)
-    except (LexError, ParseError, AnalysisError) as exc:
+            else:
+                value = interpret(tree)
+                if value is not VOID:
+                    sys.stdout.buffer.write(f"{value}\n".encode("ascii"))
+    except (LexError, ParseError, AnalysisError, ExecutionError) as exc:
         return error(f"{path}:{exc.line}:{exc.column}: error: {exc}")
     return 0
 

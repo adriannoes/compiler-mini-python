@@ -1,6 +1,6 @@
 # Mini-C in Python
 
-This project uses Python to read programs written in Mini-C.
+This project uses Python to analyze and execute programs written in Mini-C.
 A lexer separates source text into units called tokens.
 It recognizes 35 token kinds, including keywords, identifiers, decimal integers, operators, delimiters, and the end of input.
 
@@ -123,6 +123,41 @@ The checker resolves every name and checks all function signatures before it che
 It checks unreachable statements, including statements after a return.
 A non-void function must guarantee a return. An `if` guarantees a return when both branches do. A loop alone gives no such guarantee.
 
+## Execute a scalar program
+
+From the repository root, run the factorial example.
+
+```sh
+python3 -m minic --run examples/factorial.mc
+```
+
+The [interpreter](minic/interpreter.py) checks every function before it calls `main` without arguments.
+The command prints `720` and exits with status 0. A boolean result prints as `true` or `false`.
+A `void` result leaves standard output empty.
+
+In `n * factorial(n - 1)`, the multiplication waits for the inner call.
+Each call has a frame with its own parameters and local values.
+The Python interpreter keeps a stack of unfinished AST visits. A visit resumes when its child supplies a result.
+C++ and Rust use recursive host calls for this walk. The Python stack lets Mini-C enforce its own call depth during execution.
+
+The interpreter uses the resolved declaration to select a local slot. Each execution of a declaration clears that slot before the initializer runs.
+In [runtime_error.mc](examples/runtime_error.mc), the initializer reads the variable it just declared.
+The command exits with status 1 and writes this diagnostic to standard error.
+
+```text
+examples/runtime_error.mc:3:15: error: The variable "value" has no value.
+```
+
+The [arithmetic functions](minic/runtime.py) keep integers within the signed 64-bit range.
+Mini-C division truncates toward zero, so `-7 / 2` gives `-3` and `-7 % 2` gives `-1`.
+Execution converts a literal only when it reaches that literal.
+In [short_circuit.mc](examples/short_circuit.mc), `true || (1 / 0 == 0)` skips the division and its possible error.
+
+The defaults allow 1,000,000 source steps and 128 active calls, including the entry call.
+Each executed statement or expression costs one step. Skipped operands cost no steps.
+The interpreter evaluates arguments left to right before it tests the call depth.
+The library accepts another entry name and custom limits through `interpret(program, entry, limits)` and `ExecutionLimits(max_steps, max_call_depth)`.
+
 ## Tests
 
 From the repository root, run the tests with the Python standard library.
@@ -133,3 +168,13 @@ python3 -m unittest discover -s tests
 
 The command tests compare the exit status and the bytes on both output streams.
 The [expected token listings, syntax trees, and name bindings](tests/fixtures) come from the C++ compiler.
+
+With both reference executables available, compare the three implementations from the repository root.
+
+```sh
+python3 scripts/compare_cli.py run examples/factorial.mc examples/runtime_error.mc
+```
+
+The script runs each command on the same input and compares the exit status, standard output, and standard error.
+It looks for `../compiler-mini-c/build/minic` and `../compiler-mini-rust/target/debug/compiler-mini-rust`.
+If the executables are elsewhere, pass their paths with `--cpp` and `--rust`.
