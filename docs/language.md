@@ -199,6 +199,11 @@ For a binary operation, the VM pops the right operand before the left operand.
 A value return pushes its result onto the caller's stack. Returning from the entry finishes execution.
 Compiler-produced cycles contain source steps. The VM guards executed operands, indices, and stack access with `InvalidBytecode` errors.
 
+The VM and optimizer first apply [static bytecode verification](stack-analysis.md).
+It checks instruction shapes, indices, function signatures, and operand types across structural paths.
+Each reachable cycle within a function must contain a `STEP`. Paths that meet must supply identical operand-type sequences.
+Failures name the function and instruction. Array bounds, missing values, literal range, and arithmetic errors remain runtime checks.
+
 Optimization folds successful constant operations, simplifies known branches, and removes unreachable instructions.
 It keeps reachable source steps and operations that can fail or change state. Failed arithmetic remains available for execution.
 Original constant text remains in the pool, and computed integers use canonical decimal digits with a separate sign.

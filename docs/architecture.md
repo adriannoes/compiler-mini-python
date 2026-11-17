@@ -19,10 +19,12 @@ flowchart TD
     Checked --> Interpreter["AST interpreter"]
     Checked --> Compiler["Bytecode compiler"]
     Compiler --> Code["Bytecode with source positions"]
-    Code --> VM["Virtual machine"]
-    Code --> Optimizer["Optional optimization"]
+    Code --> Verify["Static bytecode verification"]
+    Verify --> VM["Virtual machine"]
+    Verify --> Optimizer["Optional optimization"]
     Optimizer --> Optimized["Optimized bytecode"]
-    Optimized --> VM
+    Optimized --> VerifyOptimized["Static bytecode verification"]
+    VerifyOptimized --> VM
     Interpreter --> Outcome["Value or positioned runtime error"]
     VM --> Outcome
 ```
@@ -60,6 +62,8 @@ The bytecode loads constant zero and returns it. Both execution commands print `
 | [runtime.py](../minic/runtime.py) | Scalar values, array storage, arithmetic, errors, and execution limits support both engines. |
 | [interpreter.py](../minic/interpreter.py) | A checked tree produces a value through explicit stacks of visits and calls. |
 | [bytecode_compiler.py](../minic/bytecode_compiler.py), [bytecode.py](../minic/bytecode.py) | A checked tree becomes function records, constants, local slots, and instructions. |
+| [control_flow.py](../minic/control_flow.py) | Instructions form basic blocks, successor edges, and entry reachability. |
+| [bytecode_verifier.py](../minic/bytecode_verifier.py) | Metadata, instructions, and operand stacks must satisfy the bytecode contract before optimization or VM execution. |
 | [bytecode_optimizer.py](../minic/bytecode_optimizer.py) | A copy of the bytecode receives constant folding and control-flow simplification. |
 | [vm.py](../minic/vm.py) | Instructions operate on local slots and operand stacks within call frames. |
 | [__main__.py](../minic/__main__.py) | The selected command reads the file and writes a result or diagnostic. |
@@ -67,6 +71,12 @@ The bytecode loads constant zero and returns it. Both execution commands print `
 `interpret` and `compile_bytecode` each call `check_types`, which first resolves names.
 The optimizer and VM accept the bytecode that the compiler produces. The optimizer keeps the input available for comparison.
 Each execution creates fresh state, so one failed execution leaves the program available for another call.
+
+The verifier follows all structural paths from each function entry, including branches with constant conditions.
+It stores incoming operand types at block entries and requires the same sequence wherever paths meet.
+This adds analysis before execution and exposes invalid compiler output before a particular input can reach it.
+Mutable bytecode records require a new analysis for each operation. The optimizer also checks its result before returning it.
+The [stack study](stack-analysis.md) describes the guarantees and runtime checks that remain necessary.
 
 ## Compare implementation choices
 
