@@ -3,6 +3,7 @@ from dataclasses import replace
 
 from minic.bytecode import Op, format_bytecode
 from minic.bytecode_compiler import compile_bytecode
+from minic.bytecode_optimizer import optimize_bytecode
 from minic.interpreter import interpret
 from minic.lexer import lex
 from minic.parser import parse
@@ -55,14 +56,19 @@ class VmTests(unittest.TestCase):
             "void f(){} void main(){f(); f();}",
             "int f(int n){if(n==0)return 0; return 1+f(n-1);} int main(){return f(3);}",
             "int id(int n){return n;} int main(){return id(id(1/0));}",
+            "int main(){int x=(2+3)*4; if(1<2)x=x+4;else x=1/0; 6*7; return x;}",
+            "void main(){while(1+2==3){4*5;}}",
         ):
             ast = tree(source)
             code = compile_bytecode(ast)
+            optimized = optimize_bytecode(code)
             for steps in range(1, 81):
                 for depth in (1, 2, 4):
                     with self.subTest(source=source, steps=steps, depth=depth):
                         limits = ExecutionLimits(steps, depth)
-                        self.assertEqual(outcome(execute_bytecode, code, limits), outcome(interpret, ast, limits))
+                        expected = outcome(interpret, ast, limits)
+                        self.assertEqual(outcome(execute_bytecode, code, limits), expected)
+                        self.assertEqual(outcome(execute_bytecode, optimized, limits), expected)
 
     def test_deep_recursion_unwinds_without_python_calls(self):
         source = ("int main(){return sum(5000);}"
