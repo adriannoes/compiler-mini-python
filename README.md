@@ -1,7 +1,9 @@
 # Mini-C in Python
 
-This educational compiler uses Python to analyze and execute Mini-C programs.
-It continues the study in [Mini-C in C++](https://github.com/adriannoes/compiler-mini-c/blob/main/README.md) and [Mini-C in Rust](https://github.com/adriannoes/compiler-mini-rust/blob/main/README.md).
+This is the third implementation in a study of how source code becomes a running program.
+The study began with [Mini-C in C++](https://github.com/adriannoes/compiler-mini-c) and continued with [Mini-C in Rust](https://github.com/adriannoes/compiler-mini-rust).
+
+Python implements this compiler. Its input programs use Mini-C, a small C-like language with static types, functions, control flow, and local arrays.
 The project uses the [MIT license](LICENSE).
 
 ## Start here
@@ -32,6 +34,29 @@ python3 -m minic --run-vm-opt examples/factorial.mc
 
 Each command prints `720` and exits with status 0. The sections below explain the stages and their implementation choices.
 Native compilers are separate requirements for reference comparisons and the LLVM laboratory.
+
+## One language, three implementations
+
+The projects share language rules and example programs.
+The study compares how each implementation language expresses the same compiler stages.
+
+| Repository | Role in the study | Development sequence |
+|---|---|---|
+| [Mini-C in C++](https://github.com/adriannoes/compiler-mini-c) | Original implementation and behavior reference | [C++ roadmap](https://github.com/adriannoes/compiler-mini-c/blob/main/docs/roadmap.md) |
+| [Mini-C in Rust](https://github.com/adriannoes/compiler-mini-rust) | Second implementation, compared with C++ | [Rust roadmap](https://github.com/adriannoes/compiler-mini-rust/blob/main/docs/roadmap.md) |
+| Mini-C in Python (this repository) | Third implementation, compared with both predecessors | [Python roadmap](docs/roadmap.md) |
+
+Each compiler can evaluate the parsed program directly or compile it into bytecode.
+Bytecode is an instruction sequence for a virtual machine (VM).
+An optional optimizer simplifies that bytecode before execution.
+
+The [architecture comparison](docs/architecture.md#compare-implementation-choices) explains how each language represents syntax nodes, runtime values, and function calls.
+Python preserves the same Mini-C rules, including distinct `bool` and `int` types and integer division where `-7 / 2` gives `-3`.
+The [phase mapping](docs/roadmap.md#match-deliveries-across-projects) connects equivalent deliveries across the projects because their phase numbers differ.
+
+The [comparison script](scripts/compare_cli.py) runs the three compilers on the same input.
+It compares standard output, standard error, and exit status, including source positions in diagnostics.
+The [reference comparison instructions](#tests) explain how to build the sibling projects and run these comparisons.
 
 ## Study guides
 
