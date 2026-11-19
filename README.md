@@ -58,6 +58,34 @@ The [comparison script](scripts/compare_cli.py) runs the three compilers on the 
 It compares standard output, standard error, and exit status, including source positions in diagnostics.
 The [reference comparison instructions](#tests) explain how to build the sibling projects and run these comparisons.
 
+## How it works
+
+The lexer separates source text into tokens. The parser groups those tokens into an abstract syntax tree (AST).
+Name resolution connects name uses to declarations. Type analysis rejects incompatible operations before either execution path starts.
+
+```mermaid
+flowchart TD
+    Source["Mini-C source (.mc)"] --> Lexer["Lexer: tokens"]
+    Lexer --> Parser["Parser: syntax tree (AST)"]
+    Parser --> Names["Name resolution"]
+    Names --> Types["Type and return analysis"]
+    Types --> Interpreter["AST interpreter"]
+    Types --> Compiler["Bytecode compiler"]
+    Compiler --> Verify["Verify bytecode"]
+    Verify --> VM["VM: execute bytecode"]
+    Verify --> Optimizer["Optional optimizer"]
+    Optimizer --> VerifyOptimized["Verify optimized bytecode"]
+    VerifyOptimized --> VM
+    Interpreter --> Result["Result or runtime error"]
+    VM --> Result
+```
+
+The bytecode verifier analyzes instruction structure and operand types before VM execution.
+The optimizer uses the same verifier for its input and result.
+
+Both execution paths report runtime errors with source positions.
+The [architecture guide](docs/architecture.md) explains each stage and its implementation choices.
+
 ## Study guides
 
 | Guide | What you learn |
